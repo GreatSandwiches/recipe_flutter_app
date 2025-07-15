@@ -39,8 +39,28 @@ class MainApp extends StatelessWidget {
             ),
           ],
         ),
-        body: const Center(
-          child: Text('Recipe App Home Page'),
+        body: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search recipes',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey[100],
+                ),
+              ),
+            ),
+            const Expanded(
+              child: Center(
+                child: Text('Recipe List Placeholder'),
+              ),
+            ),
+          ],
         ),
       ),
     );
