@@ -13,13 +13,13 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Recipe App'),
-          backgroundColor: Colors.green,
+            title: const Text('Recipe App'),
+            centerTitle: false,
           actions: [
             IconButton(
-              icon: const Icon(Icons.search),
+              icon: const Icon(Icons.settings),
               onPressed: () {
-                // Future action for search button
+                // Future action for settings button
               },
             ),
           ],
