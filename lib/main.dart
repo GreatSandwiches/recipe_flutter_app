@@ -13,7 +13,22 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-            title: const Text('Recipe App'),
+            title: Padding(
+              padding: const EdgeInsets.only(left: 20.0),
+              child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                children: const [
+                  Icon(Icons.wb_sunny, size: 16),
+                  SizedBox(width: 6),
+                  Text('Good morning', style: TextStyle(fontSize: 12)),
+                ],
+                ),
+                const Text('Calum Taylor'),
+              ],
+              ),
+            ),
             centerTitle: false,
           actions: [
             IconButton(
