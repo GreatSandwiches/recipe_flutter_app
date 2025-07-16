@@ -80,6 +80,30 @@ class _MainAppState extends State<MainApp> {
                 onSubmitted: (value) => _addIngredient(),
               ),
             ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text (
+                    'Ingredients',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                  const SizedBox(height: 4.0),
+                  Text(
+                    '${_ingredients.length} ingredient${_ingredients.length == 1 ? '' : 's'}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 12.0),
+                ],
+              ),
+            ),
             Expanded(
               child: _ingredients.isEmpty
                 ? const Center(
