@@ -55,8 +55,8 @@ class _MainAppState extends State<MainApp> {
               label: 'Explore',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              label: 'Profile',
+              icon: Icon(Icons.settings),
+              label: 'Settings',
             ),
           ],
         ),
@@ -235,10 +235,11 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
+        title: const Text('Settings'),
       ),
       body: const Center(
-        child: Text('Profile Screen'),
+        child: Text('Settings Screen'),
+        
       ),
     );
   }
