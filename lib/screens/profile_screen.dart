@@ -3,7 +3,7 @@ import '../widgets/custom_button.dart';
 import '../widgets/profile_card.dart';
 
 class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -16,6 +16,53 @@ class ProfileScreen extends StatelessWidget {
 
           // Profile Card
           ProfileCard(name: 'Calum Taylor'),
+
+          
+
+          // User Statistics
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      '25',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    const Text('Recipes'),
+                  ],
+                ),
+                Column(
+                  children: [
+                    Text(
+                      '10',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    const Text('Followers'),
+                  ],
+                ),
+                Column(
+                  children: [
+                    Text(
+                      '5',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 4),
+                    const Text('Following'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Favourite Recipes
+
+          // Settings
+
 
           // Logout Button
           Padding(
@@ -32,16 +79,6 @@ class ProfileScreen extends StatelessWidget {
                 },
               ),
           ),
-
-          // User Statistics
-
-          // Recipes made
-
-          // Favourite Recipes
-
-          // Settings
-
-          
 
       ],)
     );

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
   final List<String> ingredients;
-  const HomeScreen({Key? key, required this.ingredients}) : super(key: key);
+  const HomeScreen({super.key, required this.ingredients});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
