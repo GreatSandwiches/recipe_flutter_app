@@ -7,6 +7,7 @@ class CustomButton extends StatelessWidget {
   final Color? textColor;
   final double? width;
   final double? height;
+  final Icon? icon;
 
   const CustomButton({
     Key? key,
@@ -16,6 +17,7 @@ class CustomButton extends StatelessWidget {
     this.textColor,
     this.width,
     this.height,
+    this.icon,
   }) : super(key: key);
 
   @override
@@ -23,17 +25,32 @@ class CustomButton extends StatelessWidget {
     return SizedBox(
       width: width,
       height: height ?? 48,
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: backgroundColor ?? Theme.of(context).primaryColor,
-          foregroundColor: textColor ?? Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-        ),
-        onPressed: onPressed,
-        child: Text(label),
-      ),
+      child: icon != null
+          ? ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    backgroundColor ?? Theme.of(context).primaryColor,
+                foregroundColor: textColor ?? Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: onPressed,
+              icon: icon!,
+              label: Text(label),
+            )
+          : ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    backgroundColor ?? Theme.of(context).primaryColor,
+                foregroundColor: textColor ?? Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              onPressed: onPressed,
+              child: Text(label),
+            ),
     );
   }
 }

@@ -42,15 +42,16 @@ class ProfileScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
             child: CustomButton(
-              label: 'Logout',
-              backgroundColor: Colors.grey[300],
-              textColor: Colors.black,
-              width: double.infinity,
-              height: 48,
-              onPressed: () {
-                // TODO: implement logout functionality
-              },
-            ),
+                label: 'Logout',
+                icon: Icon(Icons.logout),
+                backgroundColor: Colors.grey[300],
+                textColor: Colors.black,
+                width: double.infinity,
+                height: 48,
+                onPressed: () {
+                  // TODO: implement logout functionality
+                },
+              ),
           ),
 
           // User Statistics
