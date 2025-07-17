@@ -17,22 +17,20 @@ class ProfileScreen extends StatelessWidget {
           // Profile Card
           ProfileCard(name: 'Calum Taylor'),
 
-          
-
           // User Statistics
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16.0),
+            padding: const EdgeInsets.symmetric(vertical: 10.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 Column(
                   children: [
                     Text(
-                      '25',
+                      '4',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 4),
-                    const Text('Recipes'),
+                    const Text('Dishes Made'),
                   ],
                 ),
                 Column(
@@ -42,7 +40,7 @@ class ProfileScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 4),
-                    const Text('Followers'),
+                    const Text('Favourites'),
                   ],
                 ),
                 Column(
@@ -52,17 +50,30 @@ class ProfileScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 4),
-                    const Text('Following'),
+                    const Text('Followers'),
                   ],
                 ),
               ],
             ),
           ),
 
-          // Favourite Recipes
-
           // Settings
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+            child: CustomButton(
+              label: 'Settings',
+              icon: Icon(Icons.settings),
+              backgroundColor: Colors.grey[300],
+              textColor: Colors.black,
+              width: double.infinity,
+              height: 48,
+              onPressed: () {
 
+              },
+            ),
+          ),
+
+          // Favourite Recipes
 
           // Logout Button
           Padding(
