@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../widgets/custom_button.dart';
+import 'settings_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   final List<String> ingredients;
@@ -47,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
               timeIcon = Icons.nights_stay;
               greeting = 'Good evening';
             }
-            
+
             // Greeting user with time specific message + icon
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,7 +72,10 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
-              // Future action for settings button
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SettingsScreen()),
+              );
             },
           ),
         ],
@@ -140,6 +146,22 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+            child: CustomButton(
+              label: 'Search',
+              icon: Icon(Icons.search),
+              backgroundColor: Colors.grey[300],
+              textColor: Colors.black,
+              width: double.infinity,
+              height: 48,
+              onPressed: () {
+      
+
+              },
+            ),
           ),
         ],
       ),
