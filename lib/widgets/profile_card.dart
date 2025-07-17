@@ -4,7 +4,7 @@ class ProfileCard extends StatelessWidget {
   final String name;
   final String? imageUrl;
 
-  const ProfileCard({Key? key, required this.name, this.imageUrl}) : super(key: key);
+  const ProfileCard({super.key, required this.name, this.imageUrl});
 
   @override
   Widget build(BuildContext context) {

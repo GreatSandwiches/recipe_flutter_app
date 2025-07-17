@@ -33,19 +33,36 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Padding(
           padding: const EdgeInsets.only(left: 20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: const [
-                  Icon(Icons.wb_sunny, size: 16),
-                  SizedBox(width: 6),
-                  Text('Good morning', style: TextStyle(fontSize: 12)),
-                ],
-              ),
-              const Text('Calum Taylor'),
-            ],
-          ),
+          child: Builder(builder: (context) {
+            final hour = DateTime.now().hour;
+            late final IconData timeIcon;
+            late final String greeting;
+            if (hour < 12) {
+              timeIcon = Icons.wb_sunny;
+              greeting = 'Good morning';
+            } else if (hour < 17) {
+              timeIcon = Icons.wb_cloudy;
+              greeting = 'Good afternoon';
+            } else {
+              timeIcon = Icons.nights_stay;
+              greeting = 'Good evening';
+            }
+            
+            // Greeting user with time specific message + icon
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(timeIcon, size: 16),
+                    const SizedBox(width: 6),
+                    Text(greeting, style: const TextStyle(fontSize: 12)),
+                  ],
+                ),
+                const Text('Calum Taylor'),
+              ],
+            );
+          }),
         ),
         centerTitle: false,
         actions: [
