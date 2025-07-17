@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/custom_button.dart';
 import 'settings_screen.dart';
+import 'search_screen.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -88,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
               controller: _controller,
               decoration: InputDecoration(
                 hintText: 'Add ingredients',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const Icon(Icons.add),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8.0),
                 ),
@@ -148,6 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
           ),
 
+          // Search Button
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
             child: CustomButton(
@@ -158,8 +160,10 @@ class _HomeScreenState extends State<HomeScreen> {
               width: double.infinity,
               height: 48,
               onPressed: () {
-      
-
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SearchScreen()),
+                );
               },
             ),
           ),
