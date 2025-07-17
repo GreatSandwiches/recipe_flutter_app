@@ -12,22 +12,13 @@ class SettingsScreen extends StatelessWidget {
       body: Column(
         children: [
 
-          // Settings Title
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Center(
-              child: Text(
-                'Settings',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ),
-          ),
-
           // Dark Mode Toggle
           SwitchListTile(
             title: const Text('Dark Mode'),
             value: false,
             onChanged: (bool value) {
+              // Handle dark mode toggle
+
 
             },
           ),
@@ -37,6 +28,8 @@ class SettingsScreen extends StatelessWidget {
             title: const Text('Notifications'),
             value: true,
             onChanged: (bool value) {
+              // Handle notifications toggle
+              
 
             },
           ),
