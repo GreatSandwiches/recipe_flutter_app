@@ -9,8 +9,47 @@ class SettingsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Settings'),
       ),
-      body: const Center(
-        child: Text('Settings Screen'),
+      body: Column(
+        children: [
+
+          // Settings Title
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Center(
+              child: Text(
+                'Settings',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+            ),
+          ),
+
+          // Dark Mode Toggle
+          SwitchListTile(
+            title: const Text('Dark Mode'),
+            value: false,
+            onChanged: (bool value) {
+
+            },
+          ),
+
+          // Notifications Toggle
+          SwitchListTile(
+            title: const Text('Notifications'),
+            value: true,
+            onChanged: (bool value) {
+
+            },
+          ),
+
+          // Language Selection
+
+          // About Section
+
+          // Contact Us Section??
+
+
+
+        ],
       ),
     );
   }

@@ -45,7 +45,7 @@ class SearchScreen extends StatelessWidget {
                             content: Text('Added Recipe ${index + 1} to favourites'),
                             duration: const Duration(seconds: 1),
                           ),
-                        );  
+                        );
                       },
                     ),
                   ),
