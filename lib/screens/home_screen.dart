@@ -159,10 +159,11 @@ class _HomeScreenState extends State<HomeScreen> {
               textColor: Colors.black,
               width: double.infinity,
               height: 48,
+
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const SearchScreen()),
+                  MaterialPageRoute(builder: (context) => SearchScreen(ingredients: widget.ingredients)),
                 );
               },
             ),
