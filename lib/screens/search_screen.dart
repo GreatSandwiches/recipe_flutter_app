@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../widgets/custom_button.dart';
+import 'recipe_details_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   final List<String> ingredients;
@@ -32,7 +33,7 @@ class _SearchScreenState extends State<SearchScreen> {
       );
       return;
     }
-
+  
     setState(() {
       _isLoading = true;
       _recipes = [];
@@ -120,6 +121,16 @@ class _SearchScreenState extends State<SearchScreen> {
                     child: ListTile(
                       title: Text(_recipes[index]),
                       subtitle: const Text('AI generated recipe'),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RecipeDetailsScreen(
+                              recipeName: _recipes[index],
+                            ),
+                          ),
+                        );
+                      },
                       trailing: IconButton(
                         icon: const Icon(Icons.favorite_border),
                         onPressed: () {
