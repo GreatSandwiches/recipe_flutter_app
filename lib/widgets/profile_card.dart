@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 
+/// A card widget that displays user profile information.
+/// 
+/// Shows the user's name and optionally their profile image.
+/// If no image URL is provided, displays a default person icon.
 class ProfileCard extends StatelessWidget {
+  /// The name to display on the profile card.
   final String name;
+  
+  /// Optional URL for the user's profile image.
   final String? imageUrl;
 
+  /// Creates a profile card with the specified name and optional image.
   const ProfileCard({super.key, required this.name, this.imageUrl});
 
   @override
@@ -32,7 +40,7 @@ class ProfileCard extends StatelessWidget {
                       child: Icon(
                         Icons.person,
                         size: 40,
-                        color: Colors.white,
+                      color: Colors.white,
                       ),
                     ),
             ),

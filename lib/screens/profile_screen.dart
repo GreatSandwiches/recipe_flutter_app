@@ -16,7 +16,7 @@ class ProfileScreen extends StatelessWidget {
         children: [
 
           // Profile Card
-          ProfileCard(name: 'Calum Taylor'),
+          ProfileCard(name: 'User'),
 
           // User Statistics
           Padding(
@@ -63,7 +63,7 @@ class ProfileScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
             child: CustomButton(
               label: 'Settings',
-              icon: Icon(Icons.settings),
+              icon: const Icon(Icons.settings),
               backgroundColor: Colors.grey[300],
               textColor: Colors.black,
               width: double.infinity,
@@ -71,32 +71,15 @@ class ProfileScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => SettingsScreen()),
+                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
                 );
-
               },
             ),
           ),
 
-          // Favourite Recipes
-
-          // Logout Button
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-            child: CustomButton(
-                label: 'Logout',
-                icon: Icon(Icons.logout),
-                backgroundColor: Colors.grey[300],
-                textColor: Colors.black,
-                width: double.infinity,
-                height: 48,
-                onPressed: () {
-                  // TODO: implement logout functionality
-                },
-              ),
-          ),
-
-      ],)
+          // TODO: Add favourite recipes section
+        ],
+      ),
     );
   }
 }

@@ -5,11 +5,17 @@ import 'screens/favourites_screen.dart';
 import 'screens/explore_screen.dart';
 import 'screens/profile_screen.dart';
 
+/// Entry point of the Recipe Flutter app.
+/// Loads environment variables before starting the app.
 Future<void> main() async {
   await dotenv.load(fileName: ".env");
   runApp(const MainApp());
 }
 
+/// The main application widget that provides navigation between different screens.
+/// 
+/// This widget manages the bottom navigation bar and displays different screens
+/// based on the selected tab.
 class MainApp extends StatefulWidget {
   const MainApp({super.key});
 
@@ -17,10 +23,15 @@ class MainApp extends StatefulWidget {
   State<MainApp> createState() => _MainAppState();
 }
 
+/// State class for [MainApp] that manages navigation and shared state.
 class _MainAppState extends State<MainApp> {
+  /// Current index of the selected bottom navigation tab.
   int _currentIndex = 0;
+  
+  /// List of ingredients shared across screens.
   final List<String> _ingredients = [];
 
+  /// List of screens corresponding to each navigation tab.
   late final List<Widget> _screens;
 
   @override

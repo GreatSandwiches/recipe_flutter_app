@@ -33,7 +33,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       return;
     }
 
-    final model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: apiKey);
+    final model = GenerativeModel(model: 'gemini-2.0-flash', apiKey: apiKey);
     final prompt =
         'Generate a detailed recipe for "${widget.recipeName}". Include a list of ingredients and step-by-step instructions. Format the ingredients with bullet points and the instructions with numbered steps.';
 

@@ -63,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(greeting, style: const TextStyle(fontSize: 12)),
                   ],
                 ),
-                const Text('Calum Taylor'),
+                const Text('User'),
               ],
             );
           }),
@@ -75,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => SettingsScreen()),
+                  MaterialPageRoute(builder: (context) => const SettingsScreen()),
               );
             },
           ),
@@ -154,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
             child: CustomButton(
               label: 'Search',
-              icon: Icon(Icons.search),
+              icon: const Icon(Icons.search),
               backgroundColor: Colors.grey[300],
               textColor: Colors.black,
               width: double.infinity,

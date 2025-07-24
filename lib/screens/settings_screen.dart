@@ -17,9 +17,7 @@ class SettingsScreen extends StatelessWidget {
             title: const Text('Dark Mode'),
             value: false,
             onChanged: (bool value) {
-              // Handle dark mode toggle
-
-
+              // TODO: Handle dark mode toggle
             },
           ),
 
@@ -28,20 +26,15 @@ class SettingsScreen extends StatelessWidget {
             title: const Text('Notifications'),
             value: true,
             onChanged: (bool value) {
-              // Handle notifications toggle
-              
-
+              // TODO: Handle notifications toggle
             },
           ),
 
-          // Language Selection
+          // TODO: Add language selection
 
-          // About Section
+          // TODO: Add about section
 
-          // Contact Us Section??
-
-
-
+          // TODO: Add contact us section
         ],
       ),
     );

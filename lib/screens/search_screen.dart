@@ -27,7 +27,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _generateRecipes() async {
-    if (_searchController.text.isEmpty) {
+    if (_searchController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter some ingredients.')),
       );
@@ -59,7 +59,10 @@ class _SearchScreenState extends State<SearchScreen> {
       final text = response.text;
 
       setState(() {
-        _recipes = text?.split('\n').where((recipe) => recipe.isNotEmpty).map((e) => e.replaceAll(RegExp(r'^\d+\.\s*'), '')).toList() ?? [];
+        _recipes = text?.split('\n')
+            .where((recipe) => recipe.trim().isNotEmpty)
+            .map((e) => e.replaceAll(RegExp(r'^\d+\.\s*'), '').trim())
+            .toList() ?? [];
         _isLoading = false;
       });
     } catch (e) {
@@ -70,6 +73,12 @@ class _SearchScreenState extends State<SearchScreen> {
         SnackBar(content: Text('Failed to generate recipes: $e')),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
