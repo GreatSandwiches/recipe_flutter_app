@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../widgets/custom_button.dart';
+import '../constants.dart';
 import 'settings_screen.dart';
 import 'search_screen.dart';
-
 
 class HomeScreen extends StatefulWidget {
   final List<String> ingredients;
@@ -63,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(greeting, style: const TextStyle(fontSize: 12)),
                   ],
                 ),
-                const Text('User'),
+                Text(AppConstants.defaultUserName),
               ],
             );
           }),

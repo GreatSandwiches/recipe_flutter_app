@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/custom_button.dart';
 import '../widgets/profile_card.dart';
+import '../constants.dart';
 import 'settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -16,7 +17,7 @@ class ProfileScreen extends StatelessWidget {
         children: [
 
           // Profile Card
-          ProfileCard(name: 'User'),
+          ProfileCard(name: AppConstants.defaultUserName),
 
           // User Statistics
           Padding(

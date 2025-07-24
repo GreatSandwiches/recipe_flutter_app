@@ -8,7 +8,7 @@ import 'screens/profile_screen.dart';
 /// Entry point of the Recipe Flutter app.
 /// Loads environment variables before starting the app.
 Future<void> main() async {
-  await dotenv.load(fileName: ".env");
+  await dotenv.load(fileName: '.env');
   runApp(const MainApp());
 }
 

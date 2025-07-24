@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import '../constants.dart';
 
 class RecipeDetailsScreen extends StatefulWidget {
   final String recipeName;
@@ -22,8 +23,8 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
 
   Future<void> _generateRecipeDetails() async {
-    final apiKey = dotenv.env['GEMINI_API_KEY'];
-    if (apiKey == null || apiKey.isEmpty || apiKey == 'YOUR_API_KEY') {
+    final apiKey = dotenv.env[AppConstants.geminiApiKeyEnv];
+    if (apiKey == null || apiKey.isEmpty || apiKey == AppConstants.apiKeyPlaceholder) {
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -33,9 +34,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       return;
     }
 
-    final model = GenerativeModel(model: 'gemini-2.0-flash', apiKey: apiKey);
+    final model = GenerativeModel(model: AppConstants.geminiModel, apiKey: apiKey);
     final prompt =
-        'Generate a detailed recipe for "${widget.recipeName}". Include a list of ingredients and step-by-step instructions. Format the ingredients with bullet points and the instructions with numbered steps.';
+        'Generate a detailed recipe for \'${widget.recipeName}\'. Include a list of ingredients and step-by-step instructions. Format the ingredients with bullet points and the instructions with numbered steps.';
 
     try {
       final response = await model.generateContent([Content.text(prompt)]);

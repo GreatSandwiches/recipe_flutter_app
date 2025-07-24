@@ -1,1 +1,13 @@
 include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # Additional rules for better code quality
+    prefer_single_quotes: true
+    prefer_const_constructors: true
+    prefer_const_literals_to_create_immutables: true
+    prefer_final_fields: true
+    avoid_print: true
+    avoid_unnecessary_containers: true
+    prefer_is_empty: true
+    prefer_is_not_empty: true

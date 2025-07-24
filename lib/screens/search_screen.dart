@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../widgets/custom_button.dart';
+import '../constants.dart';
 import 'recipe_details_screen.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -39,8 +40,8 @@ class _SearchScreenState extends State<SearchScreen> {
       _recipes = [];
     });
 
-    final apiKey = dotenv.env['GEMINI_API_KEY'];
-    if (apiKey == null || apiKey.isEmpty || apiKey == 'YOUR_API_KEY') {
+    final apiKey = dotenv.env[AppConstants.geminiApiKeyEnv];
+    if (apiKey == null || apiKey.isEmpty || apiKey == AppConstants.apiKeyPlaceholder) {
       setState(() {
         _isLoading = false;
       });
@@ -50,7 +51,7 @@ class _SearchScreenState extends State<SearchScreen> {
       return;
     }
 
-    final model = GenerativeModel(model: 'gemini-2.0-flash', apiKey: apiKey);
+    final model = GenerativeModel(model: AppConstants.geminiModel, apiKey: apiKey);
     final prompt =
         'Generate 5 recipe names based on the following ingredients: ${_searchController.text}. Just give me the names, separated by newlines, and nothing else.';
 
@@ -58,11 +59,24 @@ class _SearchScreenState extends State<SearchScreen> {
       final response = await model.generateContent([Content.text(prompt)]);
       final text = response.text;
 
+      if (text == null || text.trim().isEmpty) {
+        setState(() {
+          _isLoading = false;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No recipes were generated. Please try again.')),
+          );
+        }
+        return;
+      }
+
       setState(() {
-        _recipes = text?.split('\n')
+        _recipes = text.split('\n')
             .where((recipe) => recipe.trim().isNotEmpty)
             .map((e) => e.replaceAll(RegExp(r'^\d+\.\s*'), '').trim())
-            .toList() ?? [];
+            .where((recipe) => recipe.isNotEmpty)
+            .toList();
         _isLoading = false;
       });
     } catch (e) {
