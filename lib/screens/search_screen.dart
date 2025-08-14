@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import '../services/spoonacular_service.dart';
 import '../widgets/custom_button.dart';
 import 'recipe_details_screen.dart';
 
@@ -15,18 +14,18 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isLoading = false;
-  List<String> _recipes = [];
+  List<Map<String, dynamic>> _recipes = [];
 
   @override
   void initState() {
     super.initState();
     if (widget.ingredients.isNotEmpty) {
       _searchController.text = widget.ingredients.join(', ');
-      _generateRecipes();
+      _searchRecipes();
     }
   }
 
-  Future<void> _generateRecipes() async {
+  Future<void> _searchRecipes() async {
     if (_searchController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter some ingredients.')),
@@ -39,27 +38,11 @@ class _SearchScreenState extends State<SearchScreen> {
       _recipes = [];
     });
 
-    final apiKey = dotenv.env['GEMINI_API_KEY'];
-    if (apiKey == null || apiKey.isEmpty || apiKey == 'YOUR_API_KEY') {
-      setState(() {
-        _isLoading = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('API Key not found or not configured.')),
-      );
-      return;
-    }
-
-    final model = GenerativeModel(model: 'gemini-2.0-flash', apiKey: apiKey);
-    final prompt =
-        'Generate 5 recipe names based on the following ingredients: ${_searchController.text}. Just give me the names, separated by newlines, and nothing else.';
-
     try {
-      final response = await model.generateContent([Content.text(prompt)]);
-      final text = response.text;
-
+      final recipes = await SpoonacularService.searchRecipesByIngredients(_searchController.text);
+      
       setState(() {
-        _recipes = text?.split('\n').where((recipe) => recipe.isNotEmpty).map((e) => e.replaceAll(RegExp(r'^\d+\.\s*'), '')).toList() ?? [];
+        _recipes = recipes;
         _isLoading = false;
       });
     } catch (e) {
@@ -67,7 +50,7 @@ class _SearchScreenState extends State<SearchScreen> {
         _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to generate recipes: $e')),
+        SnackBar(content: Text('Failed to search recipes: $e')),
       );
     }
   }
@@ -76,7 +59,7 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AI Recipe Search'),
+        title: const Text('Recipe Search'),
       ),
       body: Column(
         children: [
@@ -93,8 +76,8 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 const SizedBox(height: 20),
                 CustomButton(
-                  label: 'Generate Recipes',
-                  onPressed: _generateRecipes,
+                  label: 'Search Recipes',
+                  onPressed: _searchRecipes,
                   icon: const Icon(Icons.search),
                   backgroundColor: Theme.of(context).primaryColor,
                   textColor: Colors.white,
@@ -115,34 +98,56 @@ class _SearchScreenState extends State<SearchScreen> {
               child: ListView.builder(
                 itemCount: _recipes.length,
                 itemBuilder: (context, index) {
+                  final recipe = _recipes[index];
                   return Card(
-                    margin: const EdgeInsets.symmetric(
-                        horizontal: 20.0, vertical: 10.0),
+                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: ListTile(
-                      title: Text(_recipes[index]),
-                      subtitle: const Text('AI generated recipe'),
+                      leading: recipe['image'] != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                recipe['image'],
+                                width: 60,
+                                height: 60,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    width: 60,
+                                    height: 60,
+                                    color: Colors.grey[300],
+                                    child: const Icon(Icons.restaurant),
+                                  );
+                                },
+                              ),
+                            )
+                          : Container(
+                              width: 60,
+                              height: 60,
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.restaurant),
+                            ),
+                      title: Text(
+                        recipe['title'] ?? 'Unknown Recipe',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Used ingredients: ${recipe['usedIngredientCount'] ?? 0}'),
+                          Text('Missing ingredients: ${recipe['missedIngredientCount'] ?? 0}'),
+                        ],
+                      ),
                       onTap: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => RecipeDetailsScreen(
-                              recipeName: _recipes[index],
+                              recipeId: recipe['id'],
+                              recipeName: recipe['title'] ?? 'Unknown Recipe',
                             ),
                           ),
                         );
                       },
-                      trailing: IconButton(
-                        icon: const Icon(Icons.favorite_border),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                  'Added ${_recipes[index]} to favourites'),
-                              duration: const Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                      ),
                     ),
                   );
                 },
@@ -151,7 +156,11 @@ class _SearchScreenState extends State<SearchScreen> {
           else
             const Expanded(
               child: Center(
-                child: Text('Enter ingredients and search for recipes!'),
+                child: Text(
+                  'No recipes found. Try searching with different ingredients.',
+                  style: TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
         ],

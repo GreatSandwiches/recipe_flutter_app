@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import '../services/spoonacular_service.dart';
 
 class RecipeDetailsScreen extends StatefulWidget {
+  final int recipeId;
   final String recipeName;
 
-  const RecipeDetailsScreen({super.key, required this.recipeName});
+  const RecipeDetailsScreen({
+    super.key, 
+    required this.recipeId,
+    required this.recipeName,
+  });
 
   @override
   State<RecipeDetailsScreen> createState() => _RecipeDetailsScreenState();
@@ -13,36 +17,21 @@ class RecipeDetailsScreen extends StatefulWidget {
 
 class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   bool _isLoading = true;
-  String _recipeDetails = '';
+  Map<String, dynamic>? _recipeData;
+  String _errorMessage = '';
 
   @override
   void initState() {
     super.initState();
-    _generateRecipeDetails();
+    _loadRecipeDetails();
   }
 
-  Future<void> _generateRecipeDetails() async {
-    final apiKey = dotenv.env['GEMINI_API_KEY'];
-    if (apiKey == null || apiKey.isEmpty || apiKey == 'YOUR_API_KEY') {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _recipeDetails = 'API Key not found or not configured.';
-        });
-      }
-      return;
-    }
-
-    final model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: apiKey);
-    final prompt =
-        'Generate a detailed recipe for "${widget.recipeName}". Include a list of ingredients and step-by-step instructions. Format the ingredients with bullet points and the instructions with numbered steps.';
-
+  Future<void> _loadRecipeDetails() async {
     try {
-      final response = await model.generateContent([Content.text(prompt)]);
-      final text = response.text;
+      final recipeData = await SpoonacularService.getRecipeDetails(widget.recipeId);
       if (mounted) {
         setState(() {
-          _recipeDetails = text ?? 'No recipe details found.';
+          _recipeData = recipeData;
           _isLoading = false;
         });
       }
@@ -50,7 +39,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _recipeDetails = 'Failed to generate recipe details: $e';
+          _errorMessage = 'Failed to load recipe details: $e';
         });
       }
     }
@@ -64,73 +53,190 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16.0),
-              child: _buildRecipeContent(),
-            ),
+          : _errorMessage.isNotEmpty
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      _errorMessage,
+                      style: const TextStyle(fontSize: 16),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16.0),
+                  child: _buildRecipeContent(),
+                ),
     );
   }
 
   Widget _buildRecipeContent() {
-    if (_recipeDetails.isEmpty) {
-      return const Center(child: Text('No recipe details found.'));
+    if (_recipeData == null) {
+      return const Center(child: Text('No recipe data available'));
     }
-
-    // Find the main sections of the recipe
-    final ingredientsMatch = RegExp(r'Ingredients:([\s\S]*?)(Instructions:|Method:)', caseSensitive: false).firstMatch(_recipeDetails);
-    final instructionsMatch = RegExp(r'(Instructions:|Method:)([\s\S]*)', caseSensitive: false).firstMatch(_recipeDetails);
-
-    String ingredientsText = ingredientsMatch?.group(1)?.trim() ?? '';
-    String instructionsText = instructionsMatch?.group(2)?.trim() ?? '';
-
-    // If parsing fails, display the raw text
-    if (ingredientsText.isEmpty && instructionsText.isEmpty) {
-      return Text(_recipeDetails);
-    }
-
-    // Split the sections into individual lines
-    List<String> ingredients = ingredientsText.split('\n').where((s) => s.trim().isNotEmpty).toList();
-    List<String> instructions = instructionsText.split('\n').where((s) => s.trim().isNotEmpty).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Ingredients',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8.0),
-        ...ingredients.map((ingredient) => Padding(
-              padding: const EdgeInsets.only(bottom: 4.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('• ', style: TextStyle(fontSize: 16)),
-                  Expanded(child: Text(ingredient.replaceAll(RegExp(r'^\s*[\*•-]\s*'), ''), style: const TextStyle(fontSize: 16))),
-                ],
-              ),
-            )),
-        const SizedBox(height: 24.0),
-        Text(
-          'Instructions',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8.0),
-        ...instructions.asMap().entries.map((entry) {
-          int idx = entry.key;
-          String instruction = entry.value;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('${idx + 1}. ', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                Expanded(child: Text(instruction.replaceAll(RegExp(r'^\s*\d+\.\s*'), ''), style: const TextStyle(fontSize: 16))),
-              ],
+        // Recipe image
+        if (_recipeData!['image'] != null)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              _recipeData!['image'],
+              width: double.infinity,
+              height: 200,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  width: double.infinity,
+                  height: 200,
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.restaurant, size: 64),
+                );
+              },
             ),
-          );
-        }),
+          ),
+        
+        const SizedBox(height: 16),
+        
+        // Recipe info
+        Row(
+          children: [
+            if (_recipeData!['readyInMinutes'] != null)
+              _buildInfoChip(
+                Icons.timer,
+                '${_recipeData!['readyInMinutes']} min',
+              ),
+            const SizedBox(width: 8),
+            if (_recipeData!['servings'] != null)
+              _buildInfoChip(
+                Icons.people,
+                '${_recipeData!['servings']} servings',
+              ),
+          ],
+        ),
+        
+        const SizedBox(height: 24),
+        
+        // Ingredients section
+        const Text(
+          'Ingredients',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        
+        if (_recipeData!['extendedIngredients'] != null)
+          ..._buildIngredientsList(),
+        
+        const SizedBox(height: 24),
+        
+        // Instructions section
+        const Text(
+          'Instructions',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        
+        if (_recipeData!['analyzedInstructions'] != null && 
+            _recipeData!['analyzedInstructions'].isNotEmpty)
+          ..._buildInstructionsList()
+        else if (_recipeData!['instructions'] != null)
+          Text(
+            _recipeData!['instructions'],
+            style: const TextStyle(fontSize: 16, height: 1.5),
+          )
+        else
+          const Text(
+            'No instructions available for this recipe.',
+            style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
+          ),
       ],
     );
+  }
+
+  Widget _buildInfoChip(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16),
+          const SizedBox(width: 4),
+          Text(text, style: const TextStyle(fontSize: 14)),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildIngredientsList() {
+    final ingredients = _recipeData!['extendedIngredients'] as List;
+    return ingredients.map<Widget>((ingredient) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          children: [
+            const Icon(Icons.circle, size: 8, color: Colors.grey),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                ingredient['original'] ?? ingredient['name'] ?? 'Unknown ingredient',
+                style: const TextStyle(fontSize: 16, height: 1.5),
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
+  }
+
+  List<Widget> _buildInstructionsList() {
+    final instructions = _recipeData!['analyzedInstructions'] as List;
+    if (instructions.isEmpty) return [];
+    
+    final steps = instructions[0]['steps'] as List;
+    return steps.asMap().entries.map<Widget>((entry) {
+      final index = entry.key;
+      final step = entry.value;
+      
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                step['step'] ?? '',
+                style: const TextStyle(fontSize: 16, height: 1.5),
+              ),
+            ),
+          ],
+        ),
+      );
+    }).toList();
   }
 }
