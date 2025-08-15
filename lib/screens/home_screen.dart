@@ -33,6 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Scaffold(
       appBar: AppBar(
         title: Padding(
@@ -83,20 +85,40 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: Column(
         children: [
-          Container(
+          Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
               controller: _controller,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _addIngredient(),
               decoration: InputDecoration(
-                hintText: 'Add ingredients',
-                prefixIcon: const Icon(Icons.add),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
+                hintText: 'Add ingredient',
+                prefixIcon: Icon(Icons.add, color: theme.colorScheme.primary),
+                suffixIcon: _controller.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear),
+                        tooltip: 'Clear',
+                        onPressed: () {
+                          setState(() => _controller.clear());
+                        },
+                      )
+                    : null,
                 filled: true,
-                fillColor: Colors.grey[100],
+                fillColor: theme.colorScheme.surfaceVariant.withOpacity(isDark ? 0.35 : 1),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                  borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
               ),
-              onSubmitted: (value) => _addIngredient(),
             ),
           ),
           Align(
