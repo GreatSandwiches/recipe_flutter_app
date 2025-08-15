@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/spoonacular_service.dart';
+import '../providers/favourites_provider.dart';
 
 class RecipeDetailsScreen extends StatefulWidget {
   final int recipeId;
@@ -47,9 +49,28 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final favourites = context.watch<FavouritesProvider>();
+    final isFav = favourites.isFavourite(widget.recipeId);
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.recipeName),
+        actions: [
+          IconButton(
+            icon: Icon(isFav ? Icons.favorite : Icons.favorite_border, color: isFav ? Colors.red : null),
+            onPressed: _recipeData == null && !isFav ? null : () {
+              final data = _recipeData;
+              favourites.toggle(
+                FavouriteRecipe(
+                  id: widget.recipeId,
+                  title: widget.recipeName,
+                  image: data!=null ? data['image'] : null,
+                  readyInMinutes: data!=null ? data['readyInMinutes'] : null,
+                ),
+              );
+            },
+            tooltip: isFav ? 'Remove favourite' : 'Add to favourites',
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

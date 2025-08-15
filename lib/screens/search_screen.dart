@@ -40,15 +40,17 @@ class _SearchScreenState extends State<SearchScreen> {
 
     try {
       final recipes = await SpoonacularService.searchRecipesByIngredients(_searchController.text);
-      
+      if (!mounted) return;
       setState(() {
         _recipes = recipes;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to search recipes: $e')),
       );

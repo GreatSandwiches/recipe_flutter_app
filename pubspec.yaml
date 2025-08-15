@@ -10,8 +10,9 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_dotenv: ^5.2.1
-  google_generative_ai: ^0.4.7
   http: ^1.1.0
+  provider: ^6.0.5
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:

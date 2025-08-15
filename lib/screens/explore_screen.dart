@@ -21,20 +21,23 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Future<void> _loadFeaturedRecipes() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+    });
     try {
-      // Search for popular recipes
-      final recipes = await SpoonacularService.searchRecipes('popular');
+      final recipes = await SpoonacularService.getRandomRecipes(12);
       if (mounted) {
         setState(() {
           _featuredRecipes = recipes;
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Failed to load featured recipes: $e';
+          _errorMessage = e.toString();
         });
       }
     }
@@ -103,9 +106,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   Widget _buildRecipeGrid() {
     if (_featuredRecipes.isEmpty) {
+      if (_errorMessage.isNotEmpty) {
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _errorMessage,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _loadFeaturedRecipes,
+                child: const Text('Retry'),
+              )
+            ],
+          ),
+        );
+      }
       return const Center(
         child: Text(
-          'No recipes available at the moment.',
+          'No recipes available right now.',
           style: TextStyle(fontSize: 16),
         ),
       );
