@@ -7,11 +7,32 @@ class SpoonacularService {
   
   static String? get _apiKey => dotenv.env['SPOONACULAR_API_KEY'];
 
+  static bool _isInvalidKey(String? key) => key == null || key.isEmpty || key.startsWith('YOUR_') || key.contains('YOUR_SPOONACULAR_API_KEY');
+
+  static String _requireApiKey() {
+    if (_isInvalidKey(_apiKey)) {
+      throw Exception('Spoonacular API key not configured. Set SPOONACULAR_API_KEY in .env then fully restart the app.');
+    }
+    return _apiKey!;
+  }
+
+  static Exception _httpError(String context, http.Response r) {
+    final snippet = r.body.isEmpty ? '' : ' Body: ${r.body.length > 140 ? r.body.substring(0,140) + '...' : r.body}';
+    if (r.statusCode == 401) {
+      return Exception('Unauthorized (401) during $context. Likely invalid or missing API key.$snippet');
+    }
+    if (r.statusCode == 402) {
+      return Exception('Quota exceeded (402) during $context. Check your Spoonacular plan/usage.$snippet');
+    }
+    if (r.statusCode == 429) {
+      return Exception('Rate limited (429) during $context. Slow down requests.$snippet');
+    }
+    return Exception('Failed to $context: ${r.statusCode}.$snippet');
+  }
+
   // Search recipes by ingredients
   static Future<List<Map<String, dynamic>>> searchRecipesByIngredients(String ingredients) async {
-    if (_apiKey == null || _apiKey!.isEmpty) {
-      throw Exception('Spoonacular API key not found');
-    }
+    final key = _requireApiKey();
 
     final url = Uri.parse('$_baseUrl/recipes/findByIngredients')
         .replace(queryParameters: {
@@ -19,7 +40,7 @@ class SpoonacularService {
       'number': '10',
       'ranking': '2',
       'ignorePantry': 'true',
-      'apiKey': _apiKey!,
+      'apiKey': key,
     });
 
     final response = await http.get(url);
@@ -28,20 +49,18 @@ class SpoonacularService {
       final List<dynamic> data = json.decode(response.body);
       return data.cast<Map<String, dynamic>>();
     } else {
-      throw Exception('Failed to search recipes: ${response.statusCode}');
+      throw _httpError('search recipes by ingredients', response);
     }
   }
 
   // Get recipe details by ID
   static Future<Map<String, dynamic>> getRecipeDetails(int recipeId) async {
-    if (_apiKey == null || _apiKey!.isEmpty) {
-      throw Exception('Spoonacular API key not found');
-    }
+    final key = _requireApiKey();
 
     final url = Uri.parse('$_baseUrl/recipes/$recipeId/information')
         .replace(queryParameters: {
       'includeNutrition': 'false',
-      'apiKey': _apiKey!,
+      'apiKey': key,
     });
 
     final response = await http.get(url);
@@ -49,15 +68,13 @@ class SpoonacularService {
     if (response.statusCode == 200) {
       return json.decode(response.body);
     } else {
-      throw Exception('Failed to get recipe details: ${response.statusCode}');
+      throw _httpError('get recipe details', response);
     }
   }
 
   // Search recipes by query
   static Future<List<Map<String, dynamic>>> searchRecipes(String query) async {
-    if (_apiKey == null || _apiKey!.isEmpty) {
-      throw Exception('Spoonacular API key not found');
-    }
+    final key = _requireApiKey();
 
     final url = Uri.parse('$_baseUrl/recipes/complexSearch')
         .replace(queryParameters: {
@@ -65,7 +82,7 @@ class SpoonacularService {
       'number': '10',
       'addRecipeInformation': 'true',
       'fillIngredients': 'true',
-      'apiKey': _apiKey!,
+      'apiKey': key,
     });
 
     final response = await http.get(url);
@@ -74,7 +91,27 @@ class SpoonacularService {
       final Map<String, dynamic> data = json.decode(response.body);
       return (data['results'] as List).cast<Map<String, dynamic>>();
     } else {
-      throw Exception('Failed to search recipes: ${response.statusCode}');
+      throw _httpError('search recipes', response);
+    }
+  }
+
+  // Get random recipes
+  static Future<List<Map<String, dynamic>>> getRandomRecipes(int number) async {
+    final key = _requireApiKey();
+
+    final url = Uri.parse('$_baseUrl/recipes/random')
+        .replace(queryParameters: {
+      'number': number.toString(),
+      'apiKey': key,
+    });
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+      return (data['recipes'] as List).cast<Map<String, dynamic>>();
+    } else {
+      throw _httpError('get random recipes', response);
     }
   }
 }
