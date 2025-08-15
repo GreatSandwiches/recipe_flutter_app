@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'providers/favourites_provider.dart';
 import 'providers/profile_provider.dart';
 import 'providers/settings_provider.dart';
+import 'providers/ingredients_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/favourites_screen.dart';
 import 'screens/explore_screen.dart';
@@ -20,6 +21,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => FavouritesProvider()),
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
+        ChangeNotifierProvider(create: (_) => IngredientsProvider()),
       ],
       child: const MainApp(),
     ),
@@ -35,15 +37,13 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   int _currentIndex = 0;
-  final List<String> _ingredients = [];
-
   late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
     _screens = [
-      HomeScreen(ingredients: _ingredients),
+      const HomeScreen(),
       const FavouritesScreen(),
       const ExploreScreen(),
       const ProfileScreen(),
@@ -54,6 +54,7 @@ class _MainAppState extends State<MainApp> {
       Provider.of<FavouritesProvider>(context, listen: false).load();
       Provider.of<ProfileProvider>(context, listen: false).load();
       Provider.of<SettingsProvider>(context, listen: false).load();
+      Provider.of<IngredientsProvider>(context, listen: false).load();
     });
   }
 

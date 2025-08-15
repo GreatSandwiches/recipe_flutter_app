@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../services/spoonacular_service.dart';
-import '../widgets/custom_button.dart';
 import 'recipe_details_screen.dart';
+import '../providers/ingredients_provider.dart';
 
 class SearchScreen extends StatefulWidget {
-  final List<String> ingredients;
-  const SearchScreen({super.key, required this.ingredients});
+  const SearchScreen({super.key});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -17,84 +17,109 @@ class _SearchScreenState extends State<SearchScreen> {
   List<Map<String, dynamic>> _recipes = [];
 
   @override
-  void initState() {
-    super.initState();
-    if (widget.ingredients.isNotEmpty) {
-      _searchController.text = widget.ingredients.join(', ');
-      _searchRecipes();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final ingProvider = context.watch<IngredientsProvider>();
+    final text = ingProvider.ingredients.join(', ');
+    if (_searchController.text != text) {
+      _searchController.text = text;
+      if (ingProvider.ingredients.isNotEmpty) {
+        _searchRecipes();
+      }
     }
   }
 
   Future<void> _searchRecipes() async {
-    if (_searchController.text.isEmpty) {
+    final ingProvider = context.read<IngredientsProvider>();
+    if (ingProvider.ingredients.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter some ingredients.')),
+        const SnackBar(content: Text('Add some ingredients first.')),
       );
       return;
     }
-  
-    setState(() {
-      _isLoading = true;
-      _recipes = [];
-    });
-
+    final query = ingProvider.ingredients.join(',');
+    setState(() { _isLoading = true; _recipes = []; });
     try {
-      final recipes = await SpoonacularService.searchRecipesByIngredients(_searchController.text);
+      final recipes = await SpoonacularService.searchRecipesByIngredients(query);
       if (!mounted) return;
-      setState(() {
-        _recipes = recipes;
-        _isLoading = false;
-      });
+      setState(() { _recipes = recipes; _isLoading = false; });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-      });
-      if (!mounted) return;
+      setState(() { _isLoading = false; });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to search recipes: $e')),
       );
     }
   }
 
+  void _removeIngredient(String ing) async {
+    final provider = context.read<IngredientsProvider>();
+    await provider.remove(ing);
+    if (!mounted) return;
+    if (provider.ingredients.isNotEmpty) {
+      _searchRecipes();
+    } else {
+      setState(() { _recipes = []; });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final ingProvider = context.watch<IngredientsProvider>();
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Recipe Search'),
-      ),
+      appBar: AppBar(title: const Text('Recipe Search')),
       body: Column(
         children: [
+          if (ingProvider.ingredients.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(24.0),
+              child: Text('No ingredients. Go back and add some to search.'),
+            )
+          else
+            SizedBox(
+              height: 74,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                scrollDirection: Axis.horizontal,
+                children: [
+                  for (final ing in ingProvider.ingredients)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: InputChip(
+                        label: Text(ing),
+                        onDeleted: () => _removeIngredient(ing),
+                        deleteIcon: const Icon(Icons.close, size: 18),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Row(
               children: [
-                TextField(
-                  controller: _searchController,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter ingredients (e.g., chicken, tomatoes, pasta)',
-                    border: OutlineInputBorder(),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    readOnly: true,
+                    maxLines: 2,
+                    decoration: const InputDecoration(
+                      labelText: 'Ingredients used',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                CustomButton(
-                  label: 'Search Recipes',
-                  onPressed: _searchRecipes,
+                const SizedBox(width: 12),
+                FilledButton.icon(
+                  onPressed: ingProvider.ingredients.isEmpty || _isLoading ? null : _searchRecipes,
                   icon: const Icon(Icons.search),
-                  backgroundColor: Theme.of(context).primaryColor,
-                  textColor: Colors.white,
-                  width: double.infinity,
-                  height: 48,
+                  label: const Text('Search'),
                 ),
               ],
             ),
           ),
           if (_isLoading)
-            const Expanded(
-              child: Center(
-                child: CircularProgressIndicator(),
-              ),
-            )
+            const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_recipes.isNotEmpty)
             Expanded(
               child: ListView.builder(
@@ -159,7 +184,7 @@ class _SearchScreenState extends State<SearchScreen> {
             const Expanded(
               child: Center(
                 child: Text(
-                  'No recipes found. Try searching with different ingredients.',
+                  'No recipes found. Try adjusting ingredients.',
                   style: TextStyle(fontSize: 16),
                   textAlign: TextAlign.center,
                 ),
