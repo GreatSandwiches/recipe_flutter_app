@@ -2,17 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'providers/favourites_provider.dart';
+import 'providers/profile_provider.dart';
+import 'providers/settings_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/favourites_screen.dart';
 import 'screens/explore_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/settings_screen.dart';
+import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => FavouritesProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => FavouritesProvider()),
+        ChangeNotifierProvider(create: (_) => ProfileProvider()),
+        ChangeNotifierProvider(create: (_) => SettingsProvider()),
+      ],
       child: const MainApp(),
     ),
   );
@@ -43,14 +51,22 @@ class _MainAppState extends State<MainApp> {
 
     // Load favourites after first frame so platform plugins are registered
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = Provider.of<FavouritesProvider>(context, listen: false);
-      provider.load();
+      Provider.of<FavouritesProvider>(context, listen: false).load();
+      Provider.of<ProfileProvider>(context, listen: false).load();
+      Provider.of<SettingsProvider>(context, listen: false).load();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    final darkMode = context.watch<SettingsProvider>().darkMode;
     return MaterialApp(
+      theme: buildAppTheme(dark: false),
+      darkTheme: buildAppTheme(dark: true),
+      themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
+      routes: {
+        '/settings': (_) => const SettingsScreen(),
+      },
       home: Scaffold(
         body: _screens[_currentIndex],
         bottomNavigationBar: BottomNavigationBar(

@@ -17,12 +17,14 @@ class SpoonacularService {
   }
 
   static Exception _httpError(String context, http.Response r) {
-    final snippet = r.body.isEmpty ? '' : ' Body: ${r.body.length > 140 ? r.body.substring(0,140) + '...' : r.body}';
+    final snippet = r.body.isEmpty
+        ? ''
+        : ' Body: ${r.body.length > 140 ? '${r.body.substring(0, 140)}...' : r.body}';
     if (r.statusCode == 401) {
       return Exception('Unauthorized (401) during $context. Likely invalid or missing API key.$snippet');
     }
     if (r.statusCode == 402) {
-      return Exception('Quota exceeded (402) during $context. Check your Spoonacular plan/usage.$snippet');
+      return Exception('Quota exceeded (402) during $context. Check Spoonacular plan/usage.$snippet');
     }
     if (r.statusCode == 429) {
       return Exception('Rate limited (429) during $context. Slow down requests.$snippet');
