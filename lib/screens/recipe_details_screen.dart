@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/spoonacular_service.dart';
 import '../providers/favourites_provider.dart';
+import '../services/ai_service.dart';
 
 class RecipeDetailsScreen extends StatefulWidget {
   final int recipeId;
@@ -21,6 +22,14 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _recipeData;
   String _errorMessage = '';
+  // AI additions
+  String? _aiSummary;
+  String? _aiSubs;
+  bool _loadingSummary = false;
+  bool _loadingSubs = false;
+  bool _asking = false;
+  final TextEditingController _questionCtrl = TextEditingController();
+  String? _answer;
 
   @override
   void initState() {
@@ -45,6 +54,12 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         });
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _questionCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -173,7 +188,114 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             'No instructions available for this recipe.',
             style: TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
           ),
+        
+        const SizedBox(height: 24),
+        _buildAiSection(),
       ],
+    );
+  }
+
+  Widget _buildAiSection() {
+    final recipe = _recipeData!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('AI Insights', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 12,
+            runSpacing: 12,
+          children: [
+            ElevatedButton.icon(
+              onPressed: _loadingSummary ? null : () async {
+                setState(() { _loadingSummary = true; _aiSummary = null; });
+                try { _aiSummary = await AiService.recipeSummary(recipe); } catch (e) { _aiSummary = 'Error: $e'; }
+                if (mounted) setState(() { _loadingSummary = false; });
+              },
+              icon: const Icon(Icons.summarize),
+              label: Text(_loadingSummary ? 'Loading...' : (_aiSummary==null ? 'Get Summary' : 'Refresh Summary')),
+            ),
+            ElevatedButton.icon(
+              onPressed: _loadingSubs ? null : () async {
+                setState(() { _loadingSubs = true; _aiSubs = null; });
+                try { _aiSubs = await AiService.ingredientSubstitutions(recipe); } catch (e) { _aiSubs = 'Error: $e'; }
+                if (mounted) setState(() { _loadingSubs = false; });
+              },
+              icon: const Icon(Icons.sync_alt),
+              label: Text(_loadingSubs ? 'Loading...' : (_aiSubs==null ? 'Substitutions' : 'Refresh Substitutions')),
+            ),
+            ElevatedButton.icon(
+              onPressed: () { _openAskDialog(recipe); },
+              icon: const Icon(Icons.chat_bubble_outline),
+              label: const Text('Ask'),
+            ),
+          ],
+        ),
+        if (_aiSummary != null) ...[
+          const SizedBox(height: 16),
+          Text('Summary', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[700])),
+          const SizedBox(height: 4),
+          Text(_aiSummary!, style: const TextStyle(fontSize: 15, height: 1.4)),
+        ],
+        if (_aiSubs != null) ...[
+          const SizedBox(height: 16),
+          Text('Substitutions & Dietary Options', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[700])),
+          const SizedBox(height: 4),
+          Text(_aiSubs!, style: const TextStyle(fontSize: 15, height: 1.4)),
+        ],
+        if (_answer != null) ...[
+          const SizedBox(height: 16),
+          Text('Answer', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey[700])),
+          const SizedBox(height: 4),
+          Text(_answer!, style: const TextStyle(fontSize: 15, height: 1.4)),
+        ],
+      ],
+    );
+  }
+
+  void _openAskDialog(Map<String, dynamic> recipe) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Ask the AI Cooking Assistant', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _questionCtrl,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. How can I make this spicier? Can I replace chicken with tofu?',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _asking ? null : () async {
+                      final q = _questionCtrl.text.trim();
+                      if (q.isEmpty) return;
+                      setState(() { _asking = true; _answer = null; });
+                      try { _answer = await AiService.askCookingAssistant(q, recipe: recipe); } catch (e) { _answer = 'Error: $e'; }
+                      if (mounted) setState(() { _asking = false; });
+                      if (mounted) Navigator.pop(ctx);
+                    },
+                    icon: const Icon(Icons.send),
+                    label: Text(_asking ? 'Asking...' : 'Ask'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
