@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart'; // for debugPrint
 
 class SpoonacularService {
   static const String _baseUrl = 'https://api.spoonacular.com';
@@ -32,15 +33,130 @@ class SpoonacularService {
     return Exception('Failed to $context: ${r.statusCode}.$snippet');
   }
 
-  // Search recipes by ingredients
+  // --- Ingredient Utilities ---
+  static List<String> _normalizeIngredients(List<String> ingredients) {
+    final seen = <String>{};
+    final normalized = <String>[];
+    for (var ing in ingredients) {
+      var v = ing.trim().toLowerCase();
+      if (v.isEmpty) continue;
+      // naive plural -> singular (very light heuristic)
+      if (v.endsWith('es') && v.length > 4) {
+        // tomatoes -> tomato, potatoes -> potato
+        if (v.endsWith('oes')) v = v.substring(0, v.length - 2); // drop 'es'
+      } else if (v.endsWith('s') && v.length > 3 && !v.endsWith('ss')) {
+        v = v.substring(0, v.length - 1);
+      }
+      if (seen.add(v)) normalized.add(v);
+    }
+    return normalized;
+  }
+
+  // Advanced search with full feature set (A-F from improvement plan)
+  static Future<List<Map<String, dynamic>>> searchRecipesByIngredientsAdvanced(
+    List<String> ingredients, {
+    int number = 25,
+    int minUsed = 1,
+    int maxMissing = 10,
+    bool maximizeUsed = true,
+    bool ignorePantry = true,
+    bool fallbackComplexSearch = true,
+    int fallbackMinResults = 5,
+  }) async {
+    final key = _requireApiKey();
+    final normalized = _normalizeIngredients(ingredients);
+    if (normalized.isEmpty) return [];
+
+    final ingParam = normalized.join(',');
+    final findUrl = Uri.parse('$_baseUrl/recipes/findByIngredients').replace(queryParameters: {
+      'ingredients': ingParam,
+      'number': number.toString(),
+      'ranking': maximizeUsed ? '1' : '2',
+      'ignorePantry': ignorePantry.toString(),
+      'apiKey': key,
+    });
+
+    final findResponse = await http.get(findUrl);
+    if (findResponse.statusCode != 200) {
+      throw _httpError('search recipes by ingredients (advanced)', findResponse);
+    }
+    final List<dynamic> raw = json.decode(findResponse.body);
+    var list = raw.cast<Map<String, dynamic>>();
+
+    // Client-side filtering & sorting
+    list = list.where((r) {
+      final used = (r['usedIngredientCount'] ?? 0) as int;
+      final missed = (r['missedIngredientCount'] ?? 0) as int;
+      return used >= minUsed && missed <= maxMissing;
+    }).toList();
+
+    list.sort((a, b) {
+      final usedA = (a['usedIngredientCount'] ?? 0) as int;
+      final usedB = (b['usedIngredientCount'] ?? 0) as int;
+      final missedA = (a['missedIngredientCount'] ?? 0) as int;
+      final missedB = (b['missedIngredientCount'] ?? 0) as int;
+      // Desc used, Asc missed
+      final usedComp = usedB.compareTo(usedA);
+      if (usedComp != 0) return usedComp;
+      return missedA.compareTo(missedB);
+    });
+
+    // Fallback to complexSearch if not enough good results
+    if (fallbackComplexSearch && list.length < fallbackMinResults) {
+      final complexUrl = Uri.parse('$_baseUrl/recipes/complexSearch').replace(queryParameters: {
+        'includeIngredients': ingParam,
+        'number': (number).toString(),
+        'addRecipeInformation': 'true',
+        'fillIngredients': 'true',
+        'sort': maximizeUsed ? 'max-used-ingredients' : 'min-missing-ingredients',
+        'apiKey': key,
+      });
+      final complexResp = await http.get(complexUrl);
+      if (complexResp.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(complexResp.body);
+        final complexResults = (data['results'] as List).cast<Map<String, dynamic>>();
+        // Merge by id
+        final existingIds = list.map((e) => e['id']).toSet();
+        for (final r in complexResults) {
+          if (!existingIds.contains(r['id'])) {
+            list.add(r);
+          }
+        }
+        // Re-sort if complex search adds usedIngredientCount fields (may differ: complexSearch returns 'missedIngredientCount'? Not always) - guard.
+        list.sort((a, b) {
+          final usedA = (a['usedIngredientCount'] ?? 0) as int;
+          final usedB = (b['usedIngredientCount'] ?? 0) as int;
+          final missedA = (a['missedIngredientCount'] ?? 0) as int;
+          final missedB = (b['missedIngredientCount'] ?? 0) as int;
+          final usedComp = usedB.compareTo(usedA);
+          if (usedComp != 0) return usedComp;
+          return missedA.compareTo(missedB);
+        });
+      } else {
+        // Do not throw; keep initial list.
+      }
+    }
+
+    assert(() {
+      debugPrint('[SpoonacularService] Advanced search ingredients="$ingParam" returned ${list.length} results (raw=${raw.length}). Top 3:');
+      for (var i = 0; i < list.length && i < 3; i++) {
+        final r = list[i];
+        debugPrint('  • ${r['title']} (used=${r['usedIngredientCount']}, missed=${r['missedIngredientCount']})');
+      }
+      return true;
+    }());
+
+    return list;
+  }
+
+  // Legacy simple wrapper kept for compatibility; now uses improved defaults + sorting.
   static Future<List<Map<String, dynamic>>> searchRecipesByIngredients(String ingredients) async {
     final key = _requireApiKey();
-
     final url = Uri.parse('$_baseUrl/recipes/findByIngredients')
         .replace(queryParameters: {
       'ingredients': ingredients,
-      'number': '10',
-      'ranking': '2',
+      'number': '25', // increased
+      'ranking': '1', // prefer maximizing used ingredients
       'ignorePantry': 'true',
       'apiKey': key,
     });
@@ -49,7 +165,23 @@ class SpoonacularService {
 
     if (response.statusCode == 200) {
       final List<dynamic> data = json.decode(response.body);
-      return data.cast<Map<String, dynamic>>();
+      final list = data.cast<Map<String, dynamic>>();
+      // Sort & filter basic (used >0)
+      final filtered = list.where((r) => (r['usedIngredientCount'] ?? 0) > 0).toList();
+      filtered.sort((a, b) {
+        final usedA = (a['usedIngredientCount'] ?? 0) as int;
+        final usedB = (b['usedIngredientCount'] ?? 0) as int;
+        final missedA = (a['missedIngredientCount'] ?? 0) as int;
+        final missedB = (b['missedIngredientCount'] ?? 0) as int;
+        final usedComp = usedB.compareTo(usedA);
+        if (usedComp != 0) return usedComp;
+        return missedA.compareTo(missedB);
+      });
+      assert(() {
+        debugPrint('[SpoonacularService] Legacy search ingredients="$ingredients" returned ${filtered.length}/${list.length} after filter.');
+        return true;
+      }());
+      return filtered;
     } else {
       throw _httpError('search recipes by ingredients', response);
     }
