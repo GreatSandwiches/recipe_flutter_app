@@ -200,7 +200,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 itemCount: _featuredRecipes.length + (_isLoadingMore ? 2 : 0),
                 itemBuilder: (context, index) {
                   if (index >= _featuredRecipes.length) {
-                    return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                    return _buildLoadingCard();
                   }
                   final recipe = _featuredRecipes[index];
                   return _buildRecipeCard(recipe);
@@ -303,6 +303,73 @@ class _ExploreScreenState extends State<ExploreScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 3,
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+              child: Container(
+                color: Colors.grey.shade300,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 14,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 14,
+                    width: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const Spacer(),
+                  Row(
+                    children: [
+                      Icon(Icons.timer, size: 14, color: Colors.grey.shade300),
+                      const SizedBox(width: 4),
+                      Container(
+                        height: 12,
+                        width: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
