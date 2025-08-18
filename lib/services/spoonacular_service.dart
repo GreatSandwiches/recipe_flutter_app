@@ -74,7 +74,7 @@ class SpoonacularService {
     }
   }
 
-  // Search recipes by query
+  // Search recipes by querys
   static Future<List<Map<String, dynamic>>> searchRecipes(String query) async {
     final key = _requireApiKey();
 
