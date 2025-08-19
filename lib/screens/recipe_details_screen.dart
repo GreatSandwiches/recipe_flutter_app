@@ -30,7 +30,6 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   bool _asking = false;
   final TextEditingController _questionCtrl = TextEditingController();
   String? _answer;
-  bool _showQuestionBox = false; // for panel toggle
   int _aiTabIndex = 0; // track selected AI result tab
 
   @override
@@ -222,7 +221,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.15),
+                      color: Colors.black.withValues(alpha: 0.15),
                       blurRadius: 16,
                       offset: const Offset(0, -4),
                     )
@@ -392,9 +391,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
     final background = isDark
-        ? scheme.surfaceVariant.withOpacity(0.35)
-        : scheme.surfaceVariant; // lighter in light mode
-    final border = scheme.outlineVariant.withOpacity(isDark ? 0.6 : 0.4);
+        ? scheme.surfaceContainerHighest.withValues(alpha: 0.35)
+        : scheme.surfaceContainerHighest; // lighter in light mode
+    final border = scheme.outlineVariant.withValues(alpha: isDark ? 0.6 : 0.4);
     final foreground = isDark ? scheme.onSurface : scheme.onSurfaceVariant;
 
     return Container(
@@ -531,9 +530,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5)),
+                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
