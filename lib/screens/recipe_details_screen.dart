@@ -31,6 +31,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   final TextEditingController _questionCtrl = TextEditingController();
   String? _answer;
   bool _showQuestionBox = false; // for panel toggle
+  int _aiTabIndex = 0; // track selected AI result tab
 
   @override
   void initState() {
@@ -262,84 +263,19 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // Tabs (always 3)
                             Wrap(
-                              spacing: 12,
-                              runSpacing: 12,
+                              spacing: 8,
+                              runSpacing: 4,
                               children: [
-                                ElevatedButton.icon(
-                                  onPressed: _loadingSummary ? null : () async {
-                                    sheetSetState(() { _loadingSummary = true; _aiSummary = null; });
-                                    try { _aiSummary = await AiService.recipeSummary(recipe); } catch (e) { _aiSummary = 'Error: $e'; }
-                                    if (mounted) sheetSetState(() { _loadingSummary = false; });
-                                  },
-                                  icon: const Icon(Icons.summarize),
-                                  label: Text(_loadingSummary ? 'Loading...' : (_aiSummary==null ? 'Get Summary' : 'Refresh Summary')),
-                                ),
-                                ElevatedButton.icon(
-                                  onPressed: _loadingSubs ? null : () async {
-                                    sheetSetState(() { _loadingSubs = true; _aiSubs = null; });
-                                    try { _aiSubs = await AiService.ingredientSubstitutions(recipe); } catch (e) { _aiSubs = 'Error: $e'; }
-                                    if (mounted) sheetSetState(() { _loadingSubs = false; });
-                                  },
-                                  icon: const Icon(Icons.sync_alt),
-                                  label: Text(_loadingSubs ? 'Loading...' : (_aiSubs==null ? 'Substitutions' : 'Refresh Substitutions')),
-                                ),
-                                ElevatedButton.icon(
-                                  onPressed: () {
-                                    sheetSetState(() { _showQuestionBox = !_showQuestionBox; });
-                                  },
-                                  icon: const Icon(Icons.chat_bubble_outline),
-                                  label: Text(_showQuestionBox ? 'Hide Q&A' : 'Ask'),
-                                ),
+                                _buildAiTabChip(sheetSetState, index: 0, label: 'Summary'),
+                                _buildAiTabChip(sheetSetState, index: 1, label: 'Substitutions'),
+                                _buildAiTabChip(sheetSetState, index: 2, label: 'Q&A'),
                               ],
                             ),
-                            if (_aiSummary != null) ...[
-                              const SizedBox(height: 20),
-                              Text('Summary', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700])),
-                              const SizedBox(height: 6),
-                              ..._buildSummaryParagraphs(_aiSummary!),
-                            ],
-                            if (_aiSubs != null) ...[
-                              const SizedBox(height: 20),
-                              Text('Substitutions', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700])),
-                              const SizedBox(height: 6),
-                              ..._buildSubstitutionChips(_aiSubs!),
-                            ],
-                            if (_showQuestionBox) ...[
-                              const SizedBox(height: 24),
-                              Text('Ask a Question', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700])),
-                              const SizedBox(height: 8),
-                              TextField(
-                                controller: _questionCtrl,
-                                maxLines: 4,
-                                decoration: const InputDecoration(
-                                  hintText: 'e.g. How can I make this spicier? Can I replace chicken with tofu? ',
-                                  border: OutlineInputBorder(),
-                                ),
-                              ),
-                              const SizedBox(height: 10),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: ElevatedButton.icon(
-                                  onPressed: _asking ? null : () async {
-                                    final q = _questionCtrl.text.trim();
-                                    if (q.isEmpty) return;
-                                    sheetSetState(() { _asking = true; _answer = null; });
-                                    try { _answer = await AiService.askCookingAssistant(q, recipe: recipe); } catch (e) { _answer = 'Error: $e'; }
-                                    if (mounted) sheetSetState(() { _asking = false; });
-                                  },
-                                  icon: const Icon(Icons.send),
-                                  label: Text(_asking ? 'Asking...' : 'Send'),
-                                ),
-                              ),
-                            ],
-                            if (_answer != null) ...[
-                              const SizedBox(height: 20),
-                              Text('Answer', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[700])),
-                              const SizedBox(height: 6),
-                              ..._buildSummaryParagraphs(_answer!),
-                            ],
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 16),
+                            if (_aiTabIndex == 0) ..._buildSummaryTabContent(sheetSetState, recipe) else if (_aiTabIndex == 1) ..._buildSubsTabContent(sheetSetState, recipe) else ..._buildQATabContent(sheetSetState, recipe),
+                            const SizedBox(height: 24),
                             Text(
                               'AI suggestions may be imperfect. Always follow food safety best practices.',
                               style: TextStyle(fontSize: 11, color: Colors.grey[600]),
@@ -356,6 +292,99 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         );
       },
     );
+  }
+
+  Widget _buildAiTabChip(StateSetter sheetSetState, {required int index, required String label}) {
+    final selected = _aiTabIndex == index;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      onSelected: (_) => sheetSetState(() { _aiTabIndex = index; }),
+      selectedColor: Theme.of(context).colorScheme.primaryContainer,
+      labelStyle: TextStyle(
+        color: selected ? Theme.of(context).colorScheme.onPrimaryContainer : Theme.of(context).colorScheme.onSurface,
+        fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+      ),
+    );
+  }
+
+  List<Widget> _buildSummaryTabContent(StateSetter sheetSetState, Map<String, dynamic> recipe) {
+    return [
+      Row(
+        children: [
+          ElevatedButton.icon(
+            onPressed: _loadingSummary ? null : () async {
+              sheetSetState(() { _loadingSummary = true; if (_aiSummary == null) _aiTabIndex = 0; });
+              try { _aiSummary = await AiService.recipeSummary(recipe); } catch (e) { _aiSummary = 'Error: $e'; }
+              if (mounted) sheetSetState(() { _loadingSummary = false; });
+            },
+            icon: const Icon(Icons.summarize),
+            label: Text(_loadingSummary ? 'Loading...' : (_aiSummary==null ? 'Generate Summary' : 'Refresh Summary')),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      if (_aiSummary == null && !_loadingSummary)
+        Text('Tap "Generate Summary" to create a concise overview.', style: TextStyle(color: Colors.grey[600], fontSize: 14))
+      else if (_aiSummary != null)
+        ..._buildSummaryParagraphs(_aiSummary!),
+    ];
+  }
+
+  List<Widget> _buildSubsTabContent(StateSetter sheetSetState, Map<String, dynamic> recipe) {
+    return [
+      Row(
+        children: [
+          ElevatedButton.icon(
+            onPressed: _loadingSubs ? null : () async {
+              sheetSetState(() { _loadingSubs = true; if (_aiSubs == null) _aiTabIndex = 1; });
+              try { _aiSubs = await AiService.ingredientSubstitutions(recipe); } catch (e) { _aiSubs = 'Error: $e'; }
+              if (mounted) sheetSetState(() { _loadingSubs = false; });
+            },
+            icon: const Icon(Icons.sync_alt),
+            label: Text(_loadingSubs ? 'Loading...' : (_aiSubs==null ? 'Generate Substitutions' : 'Refresh Substitutions')),
+          ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      if (_aiSubs == null && !_loadingSubs)
+        Text('Tap "Generate Substitutions" for dietary & cost-saving ideas.', style: TextStyle(color: Colors.grey[600], fontSize: 14))
+      else if (_aiSubs != null)
+        ..._buildSubstitutionChips(_aiSubs!),
+    ];
+  }
+
+  List<Widget> _buildQATabContent(StateSetter sheetSetState, Map<String, dynamic> recipe) {
+    return [
+      TextField(
+        controller: _questionCtrl,
+        maxLines: 3,
+        decoration: const InputDecoration(
+          hintText: 'Ask a cooking question about this recipe...',
+          border: OutlineInputBorder(),
+        ),
+      ),
+      const SizedBox(height: 10),
+      Align(
+        alignment: Alignment.centerRight,
+        child: ElevatedButton.icon(
+          onPressed: _asking ? null : () async {
+            final q = _questionCtrl.text.trim();
+            if (q.isEmpty) return;
+            sheetSetState(() { _asking = true; _answer = null; });
+            try { _answer = await AiService.askCookingAssistant(q, recipe: recipe); } catch (e) { _answer = 'Error: $e'; }
+            if (mounted) sheetSetState(() { _asking = false; });
+          },
+          icon: const Icon(Icons.send),
+          label: Text(_asking ? 'Asking...' : 'Send'),
+        ),
+      ),
+      const SizedBox(height: 12),
+      if (_answer == null && !_asking)
+        Text('Type a question and press Send to get help.', style: TextStyle(color: Colors.grey[600], fontSize: 14))
+      else if (_answer != null)
+        ..._buildSummaryParagraphs(_answer!),
+    ];
   }
 
   Widget _buildInfoChip(IconData icon, String text) {
