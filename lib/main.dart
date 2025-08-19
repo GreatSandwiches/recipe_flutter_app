@@ -13,16 +13,24 @@ import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/logout_screen.dart';
+import 'screens/profile_setup_screen.dart';
 import 'theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
+import 'dart:developer' as dev;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
-  await sb.Supabase.initialize(
-    url: 'https://hxushhfpgbmvajhlfshr.supabase.co',
-    anonKey: '<prefer publishable key instead of anon key for mobile and desktop apps>',
-  );
+  final supabaseUrl = dotenv.env['SUPABASE_URL'];
+  final supabaseAnon = dotenv.env['SUPABASE_ANON_KEY'];
+  if (supabaseUrl == null || supabaseAnon == null) {
+    dev.log('Supabase env vars missing (SUPABASE_URL / SUPABASE_ANON_KEY). Auth will fail.', name: 'bootstrap');
+  } else {
+    await sb.Supabase.initialize(
+      url: supabaseUrl,
+      anonKey: supabaseAnon,
+    );
+  }
   runApp(
     MultiProvider(
       providers: [
@@ -47,6 +55,9 @@ class MainApp extends StatefulWidget {
 class _MainAppState extends State<MainApp> {
   int _currentIndex = 0;
   late final List<Widget> _screens;
+  bool _profileSetupShown = false; // track redirect
+  String? _lastUserId; // track last authenticated user
+  final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
@@ -70,7 +81,24 @@ class _MainAppState extends State<MainApp> {
   @override
   Widget build(BuildContext context) {
     final darkMode = context.watch<SettingsProvider>().darkMode;
+    final auth = context.watch<AuthProvider>();
+    final profile = context.watch<ProfileProvider>();
+
+    // Reset redirect flag if user changes
+    final currentUserId = auth.user?.id;
+    if (_lastUserId != currentUserId) {
+      _lastUserId = currentUserId;
+      _profileSetupShown = false; // allow redirect for new user
+    }
+
+    if (!_profileSetupShown && auth.isLoggedIn && profile.isLoaded && !profile.isCompleted) {
+      _profileSetupShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _navKey.currentState?.pushNamed('/profile_setup');
+      });
+    }
     return MaterialApp(
+      navigatorKey: _navKey,
       theme: buildAppTheme(dark: false),
       darkTheme: buildAppTheme(dark: true),
       themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
@@ -78,6 +106,7 @@ class _MainAppState extends State<MainApp> {
         '/settings': (_) => const SettingsScreen(),
         '/login': (_) => const LoginScreen(),
         '/logout': (_) => const LogoutScreen(),
+        '/profile_setup': (_) => const ProfileSetupScreen(),
       },
       home: Scaffold(
         body: _screens[_currentIndex],

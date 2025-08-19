@@ -15,6 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordCtrl = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
+  bool _isSignUp = false; // add mode toggle
 
   @override
   void dispose() {
@@ -27,16 +28,26 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     final auth = context.read<AuthProvider>();
     setState(() { _loading = true; });
-    try {
-      await auth.login(_emailCtrl.text, _passwordCtrl.text);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logged in (placeholder)')));
-      Navigator.pop(context); // return to previous screen
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login failed: $e')));
-    } finally {
-      if (mounted) setState(() { _loading = false; });
+    bool ok;
+    final isSignUpFlow = _isSignUp;
+    if (_isSignUp) {
+      ok = await auth.signUp(_emailCtrl.text, _passwordCtrl.text);
+    } else {
+      ok = await auth.signIn(_emailCtrl.text, _passwordCtrl.text);
+    }
+    if (!mounted) return;
+    setState(() { _loading = false; });
+    if (ok) {
+      if (isSignUpFlow) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account created. Set up profile.')));
+        Navigator.pushReplacementNamed(context, '/profile_setup');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logged in')));
+        Navigator.pop(context);
+      }
+    } else {
+      final err = context.read<AuthProvider>().lastError ?? 'Unknown error';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
     }
   }
 
@@ -57,9 +68,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Icon(Icons.lock_outline, size: 72, color: theme.colorScheme.primary),
                   const SizedBox(height: 16),
-                  Text('Welcome back', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(_isSignUp ? 'Create an account' : 'Welcome back', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
-                  Text('Login is placeholder only. No real authentication yet.', style: theme.textTheme.bodySmall),
+                  Text(_isSignUp ? 'Sign up with email & password. Verification may be required.' : 'Login with your credentials.', style: theme.textTheme.bodySmall),
                   const SizedBox(height: 28),
                   TextFormField(
                     controller: _emailCtrl,
@@ -91,8 +102,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 32),
                   FilledButton.icon(
                     onPressed: _loading ? null : _submit,
-                    icon: _loading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.login),
-                    label: Text(_loading ? 'Signing in...' : 'Login'),
+                    icon: _loading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(_isSignUp ? Icons.person_add : Icons.login),
+                    label: Text(_loading ? (_isSignUp ? 'Creating...' : 'Signing in...') : (_isSignUp ? 'Sign Up' : 'Login')),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: _loading ? null : () => setState(() { _isSignUp = !_isSignUp; }),
+                    child: Text(_isSignUp ? 'Have an account? Login' : 'Need an account? Sign Up'),
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton(
