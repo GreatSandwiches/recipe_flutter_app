@@ -5,11 +5,14 @@ import 'providers/favourites_provider.dart';
 import 'providers/profile_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/ingredients_provider.dart';
+import 'providers/auth_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/favourites_screen.dart';
 import 'screens/explore_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/logout_screen.dart';
 import 'theme/app_theme.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
@@ -27,6 +30,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => IngredientsProvider()),
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
       ],
       child: const MainApp(),
     ),
@@ -72,6 +76,8 @@ class _MainAppState extends State<MainApp> {
       themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
       routes: {
         '/settings': (_) => const SettingsScreen(),
+        '/login': (_) => const LoginScreen(),
+        '/logout': (_) => const LogoutScreen(),
       },
       home: Scaffold(
         body: _screens[_currentIndex],
