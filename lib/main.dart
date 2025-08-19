@@ -11,10 +11,15 @@ import 'screens/explore_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/settings_screen.dart';
 import 'theme/app_theme.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
+  await sb.Supabase.initialize(
+    url: 'https://hxushhfpgbmvajhlfshr.supabase.co',
+    anonKey: '<prefer publishable key instead of anon key for mobile and desktop apps>',
+  );
   runApp(
     MultiProvider(
       providers: [
