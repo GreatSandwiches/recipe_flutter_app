@@ -12,7 +12,7 @@ class AiService {
     if (_isInvalidKey(key)) {
       throw Exception('Gemini API key not configured. Set GEMINI_API_KEY in .env and restart.');
     }
-    return GenerativeModel(model: 'gemini-1.5-flash', apiKey: key!);
+    return GenerativeModel(model: 'gemini-2.5-flash', apiKey: key!);
   }
 
   static Future<String> recipeSummary(Map<String, dynamic> recipe) async {
