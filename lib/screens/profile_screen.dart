@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/favourites_provider.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/profile_card.dart';
 import 'recipe_details_screen.dart';
 
@@ -151,6 +152,7 @@ class ProfileScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final profile = context.watch<ProfileProvider>();
     final favs = context.watch<FavouritesProvider>();
+    final auth = context.watch<AuthProvider>();
     final recentFavs = favs.favourites.take(8).toList();
 
     return Scaffold(
@@ -285,9 +287,15 @@ class ProfileScreen extends StatelessWidget {
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
-                            icon: const Icon(Icons.logout),
-                            label: const Text('Logout (not implemented)'),
-                            onPressed: () {},
+                            icon: Icon(auth.isLoggedIn ? Icons.logout : Icons.login),
+                            label: Text(auth.isLoggedIn ? 'Logout' : 'Login'),
+                            onPressed: () {
+                              if (auth.isLoggedIn) {
+                                auth.logout();
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logged out')));
+                              }
+                              Navigator.pushNamed(context, '/login');
+                            },
                           ),
                         ),
                       ],
