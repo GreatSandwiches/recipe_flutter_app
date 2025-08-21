@@ -89,14 +89,43 @@ class _MainAppState extends State<MainApp> {
     if (_lastUserId != currentUserId) {
       _lastUserId = currentUserId;
       _profileSetupShown = false; // allow redirect for new user
+      if (profile.userId != currentUserId) {
+        WidgetsBinding.instance.addPostFrameCallback((_) { profile.switchUser(currentUserId); });
+      }
     }
 
-    if (!_profileSetupShown && auth.isLoggedIn && profile.isLoaded && !profile.isCompleted) {
-      _profileSetupShown = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _navKey.currentState?.pushNamed('/profile_setup');
-      });
+    // If NOT logged in, show login screen as the entire app (auth gate)
+    if (!auth.isLoggedIn) {
+      return MaterialApp(
+        navigatorKey: _navKey,
+        theme: buildAppTheme(dark: false),
+        darkTheme: buildAppTheme(dark: true),
+        themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
+        routes: {
+          '/login': (_) => const LoginScreen(),
+          '/profile_setup': (_) => const ProfileSetupScreen(),
+        },
+        home: const LoginScreen(),
+      );
     }
+
+    // While switching/loading show placeholder
+    if (profile.userId != currentUserId || !profile.isLoaded) {
+      return MaterialApp(
+        navigatorKey: _navKey,
+        theme: buildAppTheme(dark: false),
+        darkTheme: buildAppTheme(dark: true),
+        themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
+        home: const Scaffold(body: Center(child: CircularProgressIndicator())),
+      );
+    }
+
+    // Redirect first-time completion
+    if (!_profileSetupShown && profile.isLoaded && !profile.isCompleted) {
+      _profileSetupShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) { _navKey.currentState?.pushNamed('/profile_setup'); });
+    }
+
     return MaterialApp(
       navigatorKey: _navKey,
       theme: buildAppTheme(dark: false),
@@ -113,28 +142,12 @@ class _MainAppState extends State<MainApp> {
         bottomNavigationBar: BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
           currentIndex: _currentIndex,
-          onTap: (index) {
-            setState(() {
-              _currentIndex = index;
-            });
-          },
+          onTap: (index) { setState(() { _currentIndex = index; }); },
           items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.favorite),
-              label: 'Favourites',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.explore),
-              label: 'Explore',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              label: 'Profile',
-            ),
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favourites'),
+            BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
           ],
         ),
       ),

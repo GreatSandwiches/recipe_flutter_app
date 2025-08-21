@@ -5,6 +5,8 @@ import '../widgets/custom_button.dart';
 import 'settings_screen.dart';
 import 'search_screen.dart';
 import '../providers/ingredients_provider.dart';
+import '../providers/profile_provider.dart';
+import '../providers/auth_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -196,7 +198,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     Text(greeting, style: const TextStyle(fontSize: 12)),
                   ],
                 ),
-                const Text('Calum Taylor'),
+                Builder(builder: (innerCtx) {
+                  final profile = innerCtx.watch<ProfileProvider>();
+                  final auth = innerCtx.watch<AuthProvider>();
+                  final displayName = profile.name.isNotEmpty
+                      ? profile.name
+                      : (auth.email != null ? auth.email!.split('@').first : 'Chef');
+                  return Text(displayName, style: Theme.of(innerCtx).textTheme.titleMedium);
+                }),
               ],
             );
           }),
