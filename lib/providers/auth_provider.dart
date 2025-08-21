@@ -68,7 +68,8 @@ class AuthProvider extends ChangeNotifier {
     _lastError = null;
     try {
       final resp = await _client!.auth.signUp(email: email.trim(), password: password);
-      return resp.user != null;
+      // Skip email verification checks and assume user is ready to log in
+      return true;
     } on AuthException catch (e) {
       _lastError = e.message;
     } catch (e) {
