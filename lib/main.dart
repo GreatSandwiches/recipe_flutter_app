@@ -55,7 +55,6 @@ class MainApp extends StatefulWidget {
 class _MainAppState extends State<MainApp> {
   int _currentIndex = 0;
   late final List<Widget> _screens;
-  bool _profileSetupShown = false; // track redirect
   String? _lastUserId; // track last authenticated user
   final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
 
@@ -84,13 +83,12 @@ class _MainAppState extends State<MainApp> {
     final auth = context.watch<AuthProvider>();
     final profile = context.watch<ProfileProvider>();
 
-    // Reset redirect flag if user changes
+    // Switch profile when user changes
     final currentUserId = auth.user?.id;
     if (_lastUserId != currentUserId) {
       _lastUserId = currentUserId;
-      _profileSetupShown = false; // allow redirect for new user
       if (profile.userId != currentUserId) {
-        WidgetsBinding.instance.addPostFrameCallback((_) { profile.switchUser(currentUserId); });
+        profile.switchUser(currentUserId);
       }
     }
 
@@ -120,10 +118,19 @@ class _MainAppState extends State<MainApp> {
       );
     }
 
-    // Redirect first-time completion
-    if (!_profileSetupShown && profile.isLoaded && !profile.isCompleted) {
-      _profileSetupShown = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) { _navKey.currentState?.pushNamed('/profile_setup'); });
+    // If profile not completed yet, show setup directly as home (no push)
+    if (!profile.isCompleted) {
+      return MaterialApp(
+        navigatorKey: _navKey,
+        theme: buildAppTheme(dark: false),
+        darkTheme: buildAppTheme(dark: true),
+        themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
+        home: const ProfileSetupScreen(),
+        routes: {
+          '/settings': (_) => const SettingsScreen(),
+          '/logout': (_) => const LogoutScreen(),
+        },
+      );
     }
 
     return MaterialApp(
@@ -135,7 +142,6 @@ class _MainAppState extends State<MainApp> {
         '/settings': (_) => const SettingsScreen(),
         '/login': (_) => const LoginScreen(),
         '/logout': (_) => const LogoutScreen(),
-        '/profile_setup': (_) => const ProfileSetupScreen(),
       },
       home: Scaffold(
         body: _screens[_currentIndex],

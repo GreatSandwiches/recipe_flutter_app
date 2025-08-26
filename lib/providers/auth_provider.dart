@@ -8,6 +8,8 @@ class AuthProvider extends ChangeNotifier {
   User? _user;
   String? _lastError;
   StreamSubscription<AuthState>? _sub;
+  AuthChangeEvent? _lastAuthEvent;
+  DateTime? _lastEventTime;
 
   AuthProvider() {
     try {
@@ -20,9 +22,26 @@ class AuthProvider extends ChangeNotifier {
     _user = _client!.auth.currentUser;
     _status = _user == null ? AuthStatus.signedOut : AuthStatus.signedIn;
     _sub = _client!.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+      final now = DateTime.now();
+      // Suppress rapid transient signedOut right after signedIn (session recovery jitter)
+      if (event == AuthChangeEvent.signedOut &&
+          _lastAuthEvent == AuthChangeEvent.signedIn &&
+          _lastEventTime != null &&
+          now.difference(_lastEventTime!) < const Duration(seconds: 2)) {
+        if (kDebugMode) {
+          print('AuthProvider: Suppressed transient signedOut event');
+        }
+        return; // ignore
+      }
       final session = data.session;
       _user = session?.user;
       _status = _user == null ? AuthStatus.signedOut : AuthStatus.signedIn;
+      _lastAuthEvent = event;
+      _lastEventTime = now;
+      if (kDebugMode) {
+        print('AuthProvider: processed auth event $event user=${_user?.id}');
+      }
       notifyListeners();
     });
   }
@@ -67,8 +86,8 @@ class AuthProvider extends ChangeNotifier {
     }
     _lastError = null;
     try {
-      final resp = await _client!.auth.signUp(email: email.trim(), password: password);
-      // Skip email verification checks and assume user is ready to log in
+  await _client!.auth.signUp(email: email.trim(), password: password);
+  // Assume immediate usability (depending on project settings)
       return true;
     } on AuthException catch (e) {
       _lastError = e.message;
