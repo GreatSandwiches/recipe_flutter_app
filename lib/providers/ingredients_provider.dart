@@ -254,7 +254,7 @@ class IngredientsProvider extends ChangeNotifier {
         if (la!=lb) return la.compareTo(lb);
         return a.compareTo(b);
       });
-      return filtered.take(limit).map((t)=> '#'+t).toList();
+      return filtered.take(limit).map((t)=> '#$t').toList();
     }
 
     // Build candidate set
