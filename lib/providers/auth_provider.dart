@@ -87,7 +87,7 @@ class AuthProvider extends ChangeNotifier {
     _lastError = null;
     try {
   await _client!.auth.signUp(email: email.trim(), password: password);
-  // Assume immediate usability (depending on project settings)
+  // Assume immediate usability
       return true;
     } on AuthException catch (e) {
       _lastError = e.message;
