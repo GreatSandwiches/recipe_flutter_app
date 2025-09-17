@@ -76,9 +76,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
     } catch (_) {
       if (mounted) setState(() {}); // ignore load-more errors silently for now
     } finally {
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _isLoadingMore = false;
       });
+      }
     }
   }
 
@@ -105,8 +107,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 final num = length['number'];
                 final unit = (length['unit'] ?? '').toString().toLowerCase();
                 if (num is int && num > 0) {
-                  if (unit.contains('min')) stepsTotal += num;
-                  else if (unit.contains('hour')) stepsTotal += num * 60;
+                  if (unit.contains('min')) {
+                    stepsTotal += num;
+                  } else if (unit.contains('hour')) stepsTotal += num * 60;
                 }
               }
             }
@@ -118,10 +121,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
     int derived = 0;
     if (sumParts > 0) derived = sumParts;
     if (stepsTotal > 0) {
-      if (derived == 0) derived = stepsTotal;
-      else if ((stepsTotal - derived).abs() / derived > 0.2) {
-        if (derived == 45 && stepsTotal != 45) derived = stepsTotal;
-        else if (stepsTotal < derived && stepsTotal >= (derived * 0.5)) derived = stepsTotal;
+      if (derived == 0) {
+        derived = stepsTotal;
+      } else if ((stepsTotal - derived).abs() / derived > 0.2) {
+        if (derived == 45 && stepsTotal != 45) {
+          derived = stepsTotal;
+        } else if (stepsTotal < derived && stepsTotal >= (derived * 0.5)) derived = stepsTotal;
       }
     }
     if (derived == 0 && ready is int && ready > 0) derived = ready;
