@@ -285,8 +285,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (showPreview) ...[
                     const SizedBox(height: 6),
                     Builder(builder: (_) {
-                      final p = preview; // ensured non-null by showPreview
-                      if (p == null) return const SizedBox.shrink();
+                      final p = preview;
                       String? qPart;
                       final min = p.quantityMin;
                       final max = p.quantityMax;
@@ -295,7 +294,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           final isInt = min % 1 == 0;
                           qPart = isInt ? min.toStringAsFixed(0) : min.toStringAsFixed(2);
                         } else {
-                          qPart = '${min}-${max}';
+                          qPart = '$min-$max';
                         }
                       }
                       final unitPart = p.unit != null ? ' ${p.unit}' : '';
