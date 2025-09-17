@@ -57,9 +57,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       _selectedColor = profile.avatarColor;
       setState((){});
     } else {
-      // Already complete -> navigate away
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) Navigator.pop(context);
+      // Already complete -> try to close this screen if there's a back stack
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        if (Navigator.of(context).canPop()) {
+          await Navigator.of(context).maybePop();
+        }
+        // If we can't pop, do nothing: MainApp will rebuild into the main UI
       });
     }
   }
@@ -80,7 +84,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     if (!mounted) return;
     setState(() { _saving = false; });
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile set up')));
-    Navigator.pop(context); // return to previous (e.g., login screen) which can then close
+  // Avoid popping the root (which would show a black screen). If we can't pop,
+  // rely on MainApp rebuilding to the main UI because profile.isCompleted == true.
+  await Navigator.of(context).maybePop();
   }
 
   @override
@@ -165,7 +171,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   ),
                   const SizedBox(height: 12),
                   TextButton(
-                    onPressed: _saving ? null : () { Navigator.pop(context); },
+                    onPressed: _saving ? null : () { Navigator.of(context).maybePop(); },
                     child: const Text('Skip for now'),
                   ),
                 ],
