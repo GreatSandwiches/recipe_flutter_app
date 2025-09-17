@@ -472,7 +472,7 @@ class IngredientsProvider extends ChangeNotifier {
       if (_synonyms.containsKey(w)) return w; // mapped explicitly
       if (w.endsWith('ies') && w.length > 4) {
         // berries -> berry
-        return w.substring(0, w.length - 3) + 'y';
+        return '${w.substring(0, w.length - 3)}y';
       }
       if (w.endsWith('oes')) { // tomatoes -> tomato (also potatoes)
         return w.substring(0, w.length - 2);
