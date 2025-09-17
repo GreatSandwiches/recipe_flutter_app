@@ -70,11 +70,12 @@ class ProfileProvider extends ChangeNotifier {
           'completed': _completed,
         });
         debugPrint('ENSURE REMOTE ROW: Insert completed');
+        // Skip immediate fetch after insert to avoid overwriting newer local state with defaults
       } else {
         debugPrint('ENSURE REMOTE ROW: Row already exists');
+        // Fetch full row (merge) only when a prior row exists
+        unawaited(_fetchRemoteAndMerge(_currentUserId!));
       }
-      // Fetch full row (merge) after ensuring
-      unawaited(_fetchRemoteAndMerge(_currentUserId!));
     } catch (e) {
       debugPrint('ENSURE REMOTE ROW ERROR: $e');
     }
@@ -165,13 +166,15 @@ class ProfileProvider extends ChangeNotifier {
       final remoteBio = (resp['bio'] ?? '') as String;
       final remoteColor = resp['avatar_color'];
       final remoteCompleted = (resp['completed'] ?? false) as bool;
-      if (remoteName != _name) { _name = remoteName; changed = true; }
-      if (remoteBio != _bio) { _bio = remoteBio; changed = true; }
+  // Prefer non-empty values and avoid overwriting local with empty remote
+  if (remoteName.trim().isNotEmpty && remoteName != _name) { _name = remoteName; changed = true; }
+  if (remoteBio != _bio && (remoteBio.trim().isNotEmpty || _bio.trim().isEmpty)) { _bio = remoteBio; changed = true; }
       if (remoteColor is int) {
         final reconstructed = 0xFF000000 | (remoteColor & 0x00FFFFFF);
         if (reconstructed != _avatarColor) { _avatarColor = reconstructed; changed = true; }
       }
-      if (remoteCompleted != _completed) { _completed = remoteCompleted; changed = true; }
+  // Never downgrade completion from true to false (avoid race with initial insert)
+  if (remoteCompleted && !_completed) { _completed = true; changed = true; }
       if (changed) {
         await _persist();
         notifyListeners();
