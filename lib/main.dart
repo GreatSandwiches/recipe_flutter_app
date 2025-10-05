@@ -6,6 +6,7 @@ import 'providers/profile_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/ingredients_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/dishes_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/favourites_screen.dart';
 import 'screens/explore_screen.dart';
@@ -39,6 +40,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
         ChangeNotifierProvider(create: (_) => IngredientsProvider()),
         ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider(create: (_) => DishesProvider()),
       ],
       child: const MainApp(),
     ),
@@ -74,6 +76,7 @@ class _MainAppState extends State<MainApp> {
       Provider.of<ProfileProvider>(context, listen: false).load();
       Provider.of<SettingsProvider>(context, listen: false).load();
       Provider.of<IngredientsProvider>(context, listen: false).load();
+      Provider.of<DishesProvider>(context, listen: false).load();
     });
   }
 
@@ -82,6 +85,7 @@ class _MainAppState extends State<MainApp> {
     final darkMode = context.watch<SettingsProvider>().darkMode;
     final auth = context.watch<AuthProvider>();
     final profile = context.watch<ProfileProvider>();
+  final dishes = context.watch<DishesProvider>();
 
     // Switch profile when user changes
     final currentUserId = auth.user?.id;
