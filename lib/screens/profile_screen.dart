@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/favourites_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/dishes_provider.dart';
 import '../widgets/profile_card.dart';
 import 'recipe_details_screen.dart';
 
@@ -153,6 +154,7 @@ class ProfileScreen extends StatelessWidget {
     final profile = context.watch<ProfileProvider>();
     final favs = context.watch<FavouritesProvider>();
     final auth = context.watch<AuthProvider>();
+  final dishes = context.watch<DishesProvider>();
     final recentFavs = favs.favourites.take(8).toList();
 
     return Scaffold(
@@ -176,7 +178,7 @@ class ProfileScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _stat('Favourites', favs.favourites.length.toString(), context),
-                        _stat('Dishes Made', '4', context), // placeholder
+                        _stat('Dishes Made', dishes.totalCount.toString(), context),
                         _stat('Followers', '5', context), // placeholder
                       ],
                     ),
