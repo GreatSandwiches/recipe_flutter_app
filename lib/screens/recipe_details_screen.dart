@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../services/spoonacular_service.dart';
 import '../providers/favourites_provider.dart';
 import '../services/ai_service.dart';
+import '../providers/dishes_provider.dart';
 
 class RecipeDetailsScreen extends StatefulWidget {
   final int recipeId;
@@ -108,12 +109,14 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       floatingActionButton: _recipeData == null
           ? null
           : FloatingActionButton(
+              heroTag: 'ai_btn',
               onPressed: _openAiOverlay,
               tooltip: 'AI Insights',
               child: const Icon(Icons.smart_toy),
             ),
     );
   }
+  
 
   Widget _buildRecipeContent() {
     if (_recipeData == null) {
@@ -146,19 +149,21 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         const SizedBox(height: 16),
         
         // Recipe info
-        Row(
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
           children: [
             if (_recipeData!['readyInMinutes'] != null)
               _buildInfoChip(
                 Icons.timer,
                 '${_recipeData!['readyInMinutes']} min',
               ),
-            const SizedBox(width: 8),
             if (_recipeData!['servings'] != null)
               _buildInfoChip(
                 Icons.people,
                 '${_recipeData!['servings']} servings',
               ),
+            _buildMarkMadeChip(),
           ],
         ),
         
@@ -418,6 +423,92 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildMarkMadeChip() {
+    final dishes = context.watch<DishesProvider>();
+    final isMade = dishes.isMade(widget.recipeId);
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final activeColor = scheme.primaryContainer;
+    final inactiveColor = isDark
+        ? scheme.surfaceContainerHighest.withValues(alpha: 0.35)
+        : scheme.surfaceContainerHighest;
+    final border = scheme.outlineVariant.withValues(alpha: isDark ? 0.6 : 0.4);
+    final fg = isMade ? scheme.onPrimaryContainer : (isDark ? scheme.onSurface : scheme.onSurfaceVariant);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(18),
+      splashColor: scheme.primary.withValues(alpha: 0.10),
+      highlightColor: Colors.transparent,
+      onTap: () {
+        final data = _recipeData;
+        if (data == null) return;
+        if (isMade) {
+          dishes.remove(widget.recipeId);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Removed from Dishes Made')));
+        } else {
+          dishes.markMade(
+            recipeId: widget.recipeId,
+            title: widget.recipeName,
+            image: data['image'],
+          );
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Marked as made!')));
+        }
+      },
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 1.0, end: isMade ? 1.02 : 1.0),
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        builder: (context, scale, child) => Transform.scale(
+          scale: scale,
+          alignment: Alignment.center,
+          child: child,
+        ),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isMade ? activeColor : inactiveColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: border, width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 140),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, anim) => FadeTransition(
+                  opacity: anim,
+                  child: ScaleTransition(scale: Tween(begin: 0.9, end: 1.0).animate(anim), child: child),
+                ),
+                child: Icon(
+                  isMade ? Icons.check_box : Icons.check_box_outline_blank,
+                  key: ValueKey<bool>(isMade),
+                  size: 18,
+                  color: fg,
+                ),
+              ),
+              const SizedBox(width: 6),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 140),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isMade ? FontWeight.w600 : FontWeight.w500,
+                  color: fg,
+                  letterSpacing: 0.2,
+                ),
+                child: const Text('Mark as Made'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
