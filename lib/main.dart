@@ -93,47 +93,32 @@ class _MainAppState extends State<MainApp> {
       _lastUserId = currentUserId;
       if (profile.userId != currentUserId) {
         profile.switchUser(currentUserId);
+        dishes.switchUser(currentUserId);
       }
     }
 
-    // If NOT logged in, show login screen as the entire app (auth gate)
+    // Decide home widget (single MaterialApp approach)
+    Widget homeWidget;
     if (!auth.isLoggedIn) {
-      return MaterialApp(
-        navigatorKey: _navKey,
-        theme: buildAppTheme(dark: false),
-        darkTheme: buildAppTheme(dark: true),
-        themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
-        routes: {
-          '/login': (_) => const LoginScreen(),
-          '/profile_setup': (_) => const ProfileSetupScreen(),
-        },
-        home: const LoginScreen(),
-      );
-    }
-
-    // While switching/loading show placeholder
-    if (profile.userId != currentUserId || !profile.isLoaded) {
-      return MaterialApp(
-        navigatorKey: _navKey,
-        theme: buildAppTheme(dark: false),
-        darkTheme: buildAppTheme(dark: true),
-        themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
-        home: const Scaffold(body: Center(child: CircularProgressIndicator())),
-      );
-    }
-
-    // If profile not completed yet, show setup directly as home (no push)
-    if (!profile.isCompleted) {
-      return MaterialApp(
-        navigatorKey: _navKey,
-        theme: buildAppTheme(dark: false),
-        darkTheme: buildAppTheme(dark: true),
-        themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
-        home: const ProfileSetupScreen(),
-        routes: {
-          '/settings': (_) => const SettingsScreen(),
-          '/logout': (_) => const LogoutScreen(),
-        },
+      homeWidget = const LoginScreen();
+    } else if (profile.userId != currentUserId || !profile.isLoaded) {
+      homeWidget = const Scaffold(body: Center(child: CircularProgressIndicator()));
+    } else if (!profile.isCompleted) {
+      homeWidget = const ProfileSetupScreen();
+    } else {
+      homeWidget = Scaffold(
+        body: _screens[_currentIndex],
+        bottomNavigationBar: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+            currentIndex: _currentIndex,
+            onTap: (index) { setState(() { _currentIndex = index; }); },
+            items: const [
+              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+              BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favourites'),
+              BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'),
+              BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+            ],
+        ),
       );
     }
 
@@ -146,21 +131,9 @@ class _MainAppState extends State<MainApp> {
         '/settings': (_) => const SettingsScreen(),
         '/login': (_) => const LoginScreen(),
         '/logout': (_) => const LogoutScreen(),
+        '/profile_setup': (_) => const ProfileSetupScreen(),
       },
-      home: Scaffold(
-        body: _screens[_currentIndex],
-        bottomNavigationBar: BottomNavigationBar(
-          type: BottomNavigationBarType.fixed,
-          currentIndex: _currentIndex,
-          onTap: (index) { setState(() { _currentIndex = index; }); },
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-            BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favourites'),
-            BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'),
-            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-          ],
-        ),
-      ),
+      home: homeWidget,
     );
   }
 }
