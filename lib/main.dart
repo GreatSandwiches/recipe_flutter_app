@@ -85,16 +85,16 @@ class _MainAppState extends State<MainApp> {
     final darkMode = context.watch<SettingsProvider>().darkMode;
     final auth = context.watch<AuthProvider>();
     final profile = context.watch<ProfileProvider>();
-  final dishes = context.watch<DishesProvider>();
+    final dishes = context.watch<DishesProvider>();
+    final ingredients = context.read<IngredientsProvider>();
 
     // Switch profile when user changes
     final currentUserId = auth.user?.id;
     if (_lastUserId != currentUserId) {
       _lastUserId = currentUserId;
-      if (profile.userId != currentUserId) {
-        profile.switchUser(currentUserId);
-        dishes.switchUser(currentUserId);
-      }
+      profile.switchUser(currentUserId);
+      dishes.switchUser(currentUserId);
+      ingredients.switchUser(currentUserId);
     }
 
     // Decide home widget (single MaterialApp approach)
