@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math; // added for logarithmic scoring
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class IngredientEntry {
   final String original;
@@ -67,9 +69,13 @@ class IngredientsProvider extends ChangeNotifier {
   static const _prefsKeyV1 = 'ingredients_v1'; // legacy (List<String>)
   static const _prefsKeyV2 = 'ingredients_v2'; // new structured list
   static const _prefsKeyUsage = 'ingredients_usage_v1';
+  static const _remoteTable = 'pantry_items';
   final List<IngredientEntry> _entries = [];
   final Map<String,int> _usage = {}; // usage frequency for ranking suggestions
   bool _loaded = false;
+  String? _currentUserId;
+  bool _remoteSyncing = false;
+  String? _lastRemoteError;
 
   // Basic synonym + canonical forms (can be expanded)
   static const Map<String, String> _synonyms = {
@@ -93,6 +99,19 @@ class IngredientsProvider extends ChangeNotifier {
   List<String> get ingredients => _entries.map((e)=>e.name).toSet().toList()..sort();
   List<IngredientEntry> get entries => List.unmodifiable(_entries);
   bool get isLoaded => _loaded;
+  bool get remoteSyncing => _remoteSyncing;
+  String? get lastRemoteError => _lastRemoteError;
+  String? get currentUserId => _currentUserId;
+
+  String _storageKey(String base, String? userId) => '${base}_${userId ?? 'anon'}';
+
+  SupabaseClient? get _client {
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
+  }
 
   // Additional default tags for hash (#) suggestions
   static const List<String> _defaultTags = [
@@ -110,47 +129,241 @@ class IngredientsProvider extends ChangeNotifier {
 
   Future<void> load() async {
     if (_loaded) return;
+    await _loadFor(userId: _currentUserId);
+  }
+
+  Future<void> _loadFor({required String? userId}) async {
     final prefs = await SharedPreferences.getInstance();
-    // Try v2
-    final rawV2 = prefs.getString(_prefsKeyV2);
+    final String storageKeyV2 = _storageKey(_prefsKeyV2, userId);
+    final String storageKeyUsage = _storageKey(_prefsKeyUsage, userId);
+
+    _entries.clear();
+    _usage.clear();
+
+    String? rawV2 = prefs.getString(storageKeyV2);
+    if (rawV2 == null && userId == null) {
+      rawV2 = prefs.getString(_prefsKeyV2);
+    }
+
     if (rawV2 != null) {
       try {
         final list = (json.decode(rawV2) as List).cast<Map>();
-        _entries
-          ..clear()
-          ..addAll(list.map((m)=>IngredientEntry.fromMap(Map<String,dynamic>.from(m))));
-      } catch (_) {}
-    } else {
-      // Migrate v1 if present
+        _entries.addAll(list.map((m) => IngredientEntry.fromMap(Map<String, dynamic>.from(m))));
+      } catch (e) {
+        debugPrint('IngredientsProvider: failed to decode structured pantry data: $e');
+      }
+    } else if (userId == null) {
       final rawV1 = prefs.getString(_prefsKeyV1);
       if (rawV1 != null) {
         try {
           final list = (json.decode(rawV1) as List).cast<String>();
           for (final s in list) {
             final parsed = _parseIngredient(s);
-            _entries.add(parsed);
+            if (parsed.name.isNotEmpty && !_isDuplicate(parsed)) {
+              _entries.add(parsed);
+            }
           }
-          await _persist();
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('IngredientsProvider: failed to migrate legacy pantry data: $e');
+        }
       }
     }
-    // Load usage map
-    final rawUsage = prefs.getString(_prefsKeyUsage);
+
+    String? rawUsage = prefs.getString(storageKeyUsage);
+    if (rawUsage == null && userId == null) {
+      rawUsage = prefs.getString(_prefsKeyUsage);
+    }
     if (rawUsage != null) {
       try {
-        final m = (json.decode(rawUsage) as Map).cast<String,dynamic>();
-        _usage.clear();
-        m.forEach((k,v){ if (v is num) _usage[k] = v.toInt(); });
-      } catch(_){}
+        final m = (json.decode(rawUsage) as Map).cast<String, dynamic>();
+        m.forEach((k, v) {
+          if (v is num) _usage[k] = v.toInt();
+        });
+      } catch (e) {
+        debugPrint('IngredientsProvider: failed to decode usage map: $e');
+      }
     }
+
     _loaded = true;
+    await _persist();
     notifyListeners();
   }
 
+  Future<void> switchUser(String? userId) async {
+    if (_currentUserId == userId) return;
+    if (_loaded) {
+      await _persist();
+    }
+    _currentUserId = userId;
+    _loaded = false;
+    _recent.clear();
+    await _loadFor(userId: userId);
+    if (_currentUserId != null) {
+      unawaited(_pullRemoteMerge());
+    }
+  }
+
   Future<void> _persist() async {
+    if (!_loaded) return;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefsKeyV2, json.encode(_entries.map((e)=>e.toMap()).toList()));
-    await prefs.setString(_prefsKeyUsage, json.encode(_usage));
+    await prefs.setString(_storageKey(_prefsKeyV2, _currentUserId), json.encode(_entries.map((e)=>e.toMap()).toList()));
+    await prefs.setString(_storageKey(_prefsKeyUsage, _currentUserId), json.encode(_usage));
+  }
+
+  Map<String, dynamic> _remotePayloadFor(IngredientEntry entry) => {
+    'user_id': _currentUserId,
+    'name': entry.name,
+    'serialized': entry.toMap(),
+    'original': entry.original,
+  };
+
+  IngredientEntry? _entryFromRemote(dynamic raw, {required String fallbackName, String? fallbackOriginal}) {
+    try {
+      Map<String, dynamic>? map;
+      if (raw is Map<String, dynamic>) {
+        map = raw;
+      } else if (raw is Map) {
+        map = Map<String, dynamic>.from(raw as Map);
+      } else if (raw is String) {
+        map = Map<String, dynamic>.from(json.decode(raw) as Map);
+      }
+      if (map == null) {
+        return null;
+      }
+      final entry = IngredientEntry.fromMap(map);
+      if (entry.name.isEmpty && fallbackName.isNotEmpty) {
+        return entry.copyWith(name: fallbackName, original: fallbackOriginal ?? entry.original);
+      }
+      return entry;
+    } catch (e) {
+      debugPrint('IngredientsProvider: failed to parse remote row: $e');
+      return null;
+    }
+  }
+
+  bool _listEquals(List<String> a, List<String> b) {
+    if (identical(a, b)) return true;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  bool _entriesEqual(IngredientEntry a, IngredientEntry b) {
+    return a.original == b.original &&
+        a.name == b.name &&
+        a.quantity == b.quantity &&
+        a.quantityMin == b.quantityMin &&
+        a.quantityMax == b.quantityMax &&
+        a.unit == b.unit &&
+        _listEquals(a.tags, b.tags);
+  }
+
+  Future<void> _pullRemoteMerge() async {
+    final client = _client;
+    final userId = _currentUserId;
+    if (client == null || userId == null) {
+      return;
+    }
+    _remoteSyncing = true;
+    _lastRemoteError = null;
+    notifyListeners();
+    try {
+      final response = await client
+          .from(_remoteTable)
+          .select('name, serialized, original')
+          .eq('user_id', userId);
+      bool changed = false;
+      for (final row in response) {
+        final name = (row['name'] ?? '') as String;
+        final entry = _entryFromRemote(row['serialized'], fallbackName: name, fallbackOriginal: row['original'] as String?);
+        if (entry == null || entry.name.isEmpty) continue;
+        final idx = _entries.indexWhere((e) => e.name == entry.name);
+        if (idx == -1) {
+          _entries.add(entry);
+          changed = true;
+        } else if (!_entriesEqual(_entries[idx], entry)) {
+          _entries[idx] = entry;
+          changed = true;
+        }
+      }
+      if (changed) {
+        await _persist();
+        notifyListeners();
+      }
+      await _pushAllRemote();
+    } on PostgrestException catch (e) {
+      _lastRemoteError = e.message;
+      debugPrint('IngredientsProvider: remote sync error: ${e.message}');
+    } catch (e) {
+      _lastRemoteError = e.toString();
+      debugPrint('IngredientsProvider: remote sync error: $e');
+    } finally {
+      _remoteSyncing = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _pushAllRemote() async {
+    final client = _client;
+    final userId = _currentUserId;
+    if (client == null || userId == null) return;
+    if (_entries.isEmpty) return;
+    try {
+      await client.from(_remoteTable).upsert(_entries.map(_remotePayloadFor).toList());
+    } on PostgrestException catch (e) {
+      _lastRemoteError = e.message;
+      debugPrint('IngredientsProvider: bulk upsert error: ${e.message}');
+    } catch (e) {
+      _lastRemoteError = e.toString();
+      debugPrint('IngredientsProvider: bulk upsert error: $e');
+    }
+  }
+
+  Future<void> _pushRemoteEntry(IngredientEntry entry) async {
+    final client = _client;
+    final userId = _currentUserId;
+    if (client == null || userId == null) return;
+    try {
+      await client.from(_remoteTable).upsert(_remotePayloadFor(entry));
+    } on PostgrestException catch (e) {
+      _lastRemoteError = e.message;
+      debugPrint('IngredientsProvider: entry upsert error: ${e.message}');
+    } catch (e) {
+      _lastRemoteError = e.toString();
+      debugPrint('IngredientsProvider: entry upsert error: $e');
+    }
+  }
+
+  Future<void> _deleteRemote(String name) async {
+    final client = _client;
+    final userId = _currentUserId;
+    if (client == null || userId == null) return;
+    try {
+      await client.from(_remoteTable).delete().match({'user_id': userId, 'name': name});
+    } on PostgrestException catch (e) {
+      _lastRemoteError = e.message;
+      debugPrint('IngredientsProvider: entry delete error: ${e.message}');
+    } catch (e) {
+      _lastRemoteError = e.toString();
+      debugPrint('IngredientsProvider: entry delete error: $e');
+    }
+  }
+
+  Future<void> _clearRemote() async {
+    final client = _client;
+    final userId = _currentUserId;
+    if (client == null || userId == null) return;
+    try {
+      await client.from(_remoteTable).delete().eq('user_id', userId);
+    } on PostgrestException catch (e) {
+      _lastRemoteError = e.message;
+      debugPrint('IngredientsProvider: clear error: ${e.message}');
+    } catch (e) {
+      _lastRemoteError = e.toString();
+      debugPrint('IngredientsProvider: clear error: $e');
+    }
   }
 
   void _incrementUsageInternal(String name) {
@@ -161,7 +374,7 @@ class IngredientsProvider extends ChangeNotifier {
     final key = _normalizeName(name);
     if (key.isEmpty) return;
     _incrementUsageInternal(key);
-    _persist();
+    unawaited(_persist());
   }
 
   // Public simple add returning result
@@ -176,11 +389,13 @@ class IngredientsProvider extends ChangeNotifier {
     if (_recent.length > _recentCap) _recent.removeLast();
     notifyListeners();
     await _persist();
+    unawaited(_pushRemoteEntry(parsed));
     return AddResult.added;
   }
 
   Future<int> addMany(Iterable<String> list) async { // modified to track recent
     int added = 0;
+    final List<IngredientEntry> newEntries = [];
     for (final raw in list) {
       final parsed = _parseIngredient(raw);
       if (parsed.name.isEmpty) continue;
@@ -190,11 +405,15 @@ class IngredientsProvider extends ChangeNotifier {
       _recent.remove(parsed.name);
       _recent.insert(0, parsed.name);
       if (_recent.length > _recentCap) _recent.removeLast();
+      newEntries.add(parsed);
       added++;
     }
     if (added > 0) {
       notifyListeners();
       await _persist();
+      for (final entry in newEntries) {
+        unawaited(_pushRemoteEntry(entry));
+      }
     }
     return added;
   }
@@ -211,19 +430,34 @@ class IngredientsProvider extends ChangeNotifier {
     _entries[idx] = parsed;
     notifyListeners();
     await _persist();
+    unawaited(_pushRemoteEntry(parsed));
+    if (existing.name != parsed.name) {
+      unawaited(_deleteRemote(existing.name));
+    }
     return true;
   }
 
   Future<void> remove(String ingredientName) async {
-    _entries.removeWhere((e) => e.name == ingredientName);
+    bool removed = false;
+    _entries.removeWhere((e) {
+      if (e.name == ingredientName) {
+        removed = true;
+        return true;
+      }
+      return false;
+    });
+    if (!removed) return;
     notifyListeners();
     await _persist();
+    unawaited(_deleteRemote(ingredientName));
   }
 
   Future<void> clear() async {
+    if (_entries.isEmpty) return;
     _entries.clear();
     notifyListeners();
     await _persist();
+    unawaited(_clearRemote());
   }
 
   IngredientEntry? entryByName(String name) {
