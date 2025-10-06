@@ -87,6 +87,7 @@ class _MainAppState extends State<MainApp> {
     final profile = context.watch<ProfileProvider>();
     final dishes = context.watch<DishesProvider>();
     final ingredients = context.read<IngredientsProvider>();
+    final favourites = context.read<FavouritesProvider>();
 
     // Switch profile when user changes
     final currentUserId = auth.user?.id;
@@ -95,6 +96,7 @@ class _MainAppState extends State<MainApp> {
       profile.switchUser(currentUserId);
       dishes.switchUser(currentUserId);
       ingredients.switchUser(currentUserId);
+      favourites.switchUser(currentUserId);
     }
 
     // Decide home widget (single MaterialApp approach)
