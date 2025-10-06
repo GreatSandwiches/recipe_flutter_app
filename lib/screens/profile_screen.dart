@@ -154,8 +154,9 @@ class ProfileScreen extends StatelessWidget {
     final profile = context.watch<ProfileProvider>();
     final favs = context.watch<FavouritesProvider>();
     final auth = context.watch<AuthProvider>();
-  final dishes = context.watch<DishesProvider>();
+    final dishes = context.watch<DishesProvider>();
     final recentFavs = favs.favourites.take(8).toList();
+    final recentDishes = dishes.dishes.take(8).toList();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
@@ -258,6 +259,94 @@ class ProfileScreen extends StatelessWidget {
                         },
                         separatorBuilder: (_, __) => const SizedBox(width: 12),
                         itemCount: recentFavs.length,
+                      ),
+                    ),
+                  ),
+                if (recentDishes.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 28, 20, 8),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle, size: 20, color: Colors.green),
+                          const SizedBox(width: 8),
+                          Text('Recently Cooked', style: Theme.of(context).textTheme.titleMedium),
+                        ],
+                      ),
+                    ),
+                  ),
+                if (recentDishes.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: 170,
+                      child: ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        scrollDirection: Axis.horizontal,
+                        itemBuilder: (ctx, i) {
+                          final dish = recentDishes[i];
+                          final lastMade = '${dish.madeAt.day}/${dish.madeAt.month}/${dish.madeAt.year}';
+                          return GestureDetector(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => RecipeDetailsScreen(
+                                  recipeId: dish.recipeId,
+                                  recipeName: dish.title,
+                                ),
+                              ),
+                            ),
+                            child: SizedBox(
+                              width: 140,
+                              child: Card(
+                                clipBehavior: Clip.antiAlias,
+                                elevation: 3,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: dish.image != null
+                                          ? Image.network(
+                                              dish.image!,
+                                              width: double.infinity,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Container(
+                                                color: Colors.grey[300],
+                                                child: const Icon(Icons.restaurant),
+                                              ),
+                                            )
+                                          : Container(
+                                              color: Colors.grey[300],
+                                              child: const Center(child: Icon(Icons.restaurant_menu)),
+                                            ),
+                                    ),
+                                    Padding(
+                                      padding: const EdgeInsets.all(8),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            dish.title,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Last: $lastMade',
+                                            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        separatorBuilder: (_, __) => const SizedBox(width: 12),
+                        itemCount: recentDishes.length,
                       ),
                     ),
                   ),
