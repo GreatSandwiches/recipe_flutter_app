@@ -444,19 +444,23 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       borderRadius: BorderRadius.circular(18),
       splashColor: scheme.primary.withValues(alpha: 0.10),
       highlightColor: Colors.transparent,
-      onTap: () {
+      onTap: () async {
         final data = _recipeData;
         if (data == null) return;
         if (isMade) {
-          dishes.remove(widget.recipeId);
+          await dishes.remove(widget.recipeId);
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Removed from Dishes Made')));
         } else {
-          dishes.markMade(
+          await dishes.markMade(
             recipeId: widget.recipeId,
             title: widget.recipeName,
             image: data['image'],
           );
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Marked as made!')));
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Marked as made!')),
+          );
         }
       },
       child: TweenAnimationBuilder<double>(
