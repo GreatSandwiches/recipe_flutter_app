@@ -43,8 +43,8 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pushReplacementNamed(context, '/profile_setup');
       } else {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logged in')));
-  // Close login if possible; if this is the root, MainApp will swap UI anyway
-  await Navigator.of(context).maybePop();
+        // Close login if possible; if this is the root, MainApp will swap UI anyway
+        await Navigator.of(context).maybePop();
       }
     } else {
       final err = context.read<AuthProvider>().lastError ?? 'Unknown error';
@@ -110,11 +110,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextButton(
                     onPressed: _loading ? null : () => setState(() { _isSignUp = !_isSignUp; }),
                     child: Text(_isSignUp ? 'Have an account? Login' : 'Need an account? Sign Up'),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton(
-                    onPressed: _loading ? null : () => Navigator.of(context).maybePop(),
-                    child: const Text('Cancel'),
                   ),
                 ],
               ),
