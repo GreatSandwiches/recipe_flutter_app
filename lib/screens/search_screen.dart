@@ -91,7 +91,10 @@ class _SearchScreenState extends State<SearchScreen> {
             SizedBox(
               height: 74,
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
                 scrollDirection: Axis.horizontal,
                 children: [
                   for (final ing in ingProvider.ingredients)
@@ -123,7 +126,9 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 const SizedBox(width: 12),
                 FilledButton.icon(
-                  onPressed: ingProvider.ingredients.isEmpty || _isLoading ? null : _searchRecipes,
+                  onPressed: ingProvider.ingredients.isEmpty || _isLoading
+                      ? null
+                      : _searchRecipes,
                   icon: const Icon(Icons.search),
                   label: const Text('Search'),
                 ),
@@ -139,7 +144,10 @@ class _SearchScreenState extends State<SearchScreen> {
                 itemBuilder: (context, index) {
                   final recipe = _recipes[index];
                   return Card(
-                    margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     child: ListTile(
                       leading: recipe['image'] != null
                           ? ClipRRect(
@@ -172,8 +180,12 @@ class _SearchScreenState extends State<SearchScreen> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Used ingredients: ${recipe['usedIngredientCount'] ?? 0}'),
-                          Text('Missing ingredients: ${recipe['missedIngredientCount'] ?? 0}'),
+                          Text(
+                            'Used ingredients: ${recipe['usedIngredientCount'] ?? 0}',
+                          ),
+                          Text(
+                            'Missing ingredients: ${recipe['missedIngredientCount'] ?? 0}',
+                          ),
                         ],
                       ),
                       onTap: () {
