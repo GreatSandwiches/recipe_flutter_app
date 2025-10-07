@@ -7,6 +7,9 @@ import 'search_screen.dart';
 import '../providers/ingredients_provider.dart';
 import '../providers/profile_provider.dart';
 import '../providers/auth_provider.dart';
+import '../models/recipe_search_options.dart';
+import '../utils/recipe_filter_utils.dart';
+import '../widgets/recipe_filter_sheet.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,11 +24,13 @@ class _HomeScreenState extends State<HomeScreen> {
   final FocusNode _inputWrapperFocus = FocusNode();
   List<String> _suggestions = [];
   int _highlightIndex = -1;
+  late RecipeSearchOptions _filters;
 
   @override
   void initState() {
     super.initState();
     _controller.addListener(_handleTextChanged);
+    _filters = normaliseRecipeSearchOptions(kDefaultRecipeFilters);
   }
 
   void _handleTextChanged() {
@@ -57,7 +62,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _selectSuggestion(IngredientsProvider provider, String s) {
     _controller.text = s;
-    _controller.selection = TextSelection.fromPosition(TextPosition(offset: s.length));
+    _controller.selection = TextSelection.fromPosition(
+      TextPosition(offset: s.length),
+    );
     _commitCurrent(provider);
   }
 
@@ -66,22 +73,30 @@ class _HomeScreenState extends State<HomeScreen> {
     final key = e.logicalKey;
     if (key == LogicalKeyboardKey.arrowDown) {
       if (_suggestions.isNotEmpty) {
-        setState(() { _highlightIndex = (_highlightIndex + 1) % _suggestions.length; });
+        setState(() {
+          _highlightIndex = (_highlightIndex + 1) % _suggestions.length;
+        });
         return true;
       }
     } else if (key == LogicalKeyboardKey.arrowUp) {
       if (_suggestions.isNotEmpty) {
-        setState(() { _highlightIndex = (_highlightIndex - 1); if (_highlightIndex < 0) _highlightIndex = _suggestions.length - 1; });
+        setState(() {
+          _highlightIndex = (_highlightIndex - 1);
+          if (_highlightIndex < 0) _highlightIndex = _suggestions.length - 1;
+        });
         return true;
       }
-    } else if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
+    } else if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter) {
       if (_highlightIndex >= 0 && _highlightIndex < _suggestions.length) {
         _selectSuggestion(provider, _suggestions[_highlightIndex]);
         return true;
       }
       _commitCurrent(provider);
       return true;
-    } else if (key == LogicalKeyboardKey.comma || key.keyLabel == ',' || key == LogicalKeyboardKey.semicolon) {
+    } else if (key == LogicalKeyboardKey.comma ||
+        key.keyLabel == ',' ||
+        key == LogicalKeyboardKey.semicolon) {
       _commitCurrent(provider);
       return true;
     } else if (key == LogicalKeyboardKey.escape) {
@@ -89,7 +104,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _controller.clear();
         return true;
       }
-    } else if (key == LogicalKeyboardKey.tab && _highlightIndex >= 0 && _highlightIndex < _suggestions.length) {
+    } else if (key == LogicalKeyboardKey.tab &&
+        _highlightIndex >= 0 &&
+        _highlightIndex < _suggestions.length) {
       _selectSuggestion(provider, _suggestions[_highlightIndex]);
       return true;
     }
@@ -108,21 +125,33 @@ class _HomeScreenState extends State<HomeScreen> {
   void _submitInput(IngredientsProvider provider) async {
     final raw = _controller.text.trim();
     if (raw.isEmpty) return;
-    final parts = raw.split(RegExp(r'[\n,;]')).map((e) => e.trim()).where((e) => e.isNotEmpty);
+    final parts = raw
+        .split(RegExp(r'[\n,;]'))
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty);
     _controller.clear();
     final count = await provider.addMany(parts);
     if (!mounted) return;
     if (count == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No new ingredients added')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No new ingredients added')));
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Added $count ingredient${count==1?'':'s'}')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Added $count ingredient${count == 1 ? '' : 's'}'),
+        ),
+      );
     }
     _updateSuggestions(provider);
     _focusNode.requestFocus();
     setState(() {});
   }
 
-  void _removeIngredient(IngredientsProvider provider, String ingredient) async {
+  void _removeIngredient(
+    IngredientsProvider provider,
+    String ingredient,
+  ) async {
     await provider.remove(ingredient);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -145,16 +174,47 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Clear all ingredients?'),
         content: const Text('This will remove every ingredient you\'ve added.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Clear')),
+          TextButton(
+            onPressed: () => Navigator.pop(c, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(c, true),
+            child: const Text('Clear'),
+          ),
         ],
       ),
     );
     if (ok == true) {
       await provider.clear();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Ingredients cleared')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Ingredients cleared')));
     }
+  }
+
+  Future<void> _openFilters() async {
+    final result = await showRecipeFilterSheet(
+      context: context,
+      initialOptions: _filters,
+    );
+    if (result != null && mounted) {
+      setState(() {
+        _filters = normaliseRecipeSearchOptions(result);
+      });
+    }
+  }
+
+  List<Widget> _buildActiveFilters() {
+    return buildActiveFilterChips(
+      filters: _filters,
+      onFiltersChanged: (next) {
+        setState(() {
+          _filters = normaliseRecipeSearchOptions(next);
+        });
+      },
+    );
   }
 
   @override
@@ -165,50 +225,62 @@ class _HomeScreenState extends State<HomeScreen> {
     _updateSuggestions(provider);
     final rawInput = _controller.text.trim();
     final preview = rawInput.isEmpty ? null : provider.parsePreview(rawInput);
-    final showPreview = preview != null && preview.name.isNotEmpty && preview.name != rawInput.toLowerCase();
-    final surfaceFill = isDark 
-      ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35)
-      : theme.colorScheme.surfaceContainerHighest;
+    final showPreview =
+        preview != null &&
+        preview.name.isNotEmpty &&
+        preview.name != rawInput.toLowerCase();
+    final surfaceFill = isDark
+        ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35)
+        : theme.colorScheme.surfaceContainerHighest;
     return Scaffold(
       appBar: AppBar(
         title: Padding(
           padding: const EdgeInsets.only(left: 20.0),
-          child: Builder(builder: (context) {
-            final hour = DateTime.now().hour;
-            late final IconData timeIcon;
-            late final String greeting;
-            if (hour < 12) {
-              timeIcon = Icons.wb_sunny;
-              greeting = 'Good morning';
-            } else if (hour < 17) {
-              timeIcon = Icons.wb_cloudy;
-              greeting = 'Good afternoon';
-            } else {
-              timeIcon = Icons.nights_stay;
-              greeting = 'Good evening';
-            }
+          child: Builder(
+            builder: (context) {
+              final hour = DateTime.now().hour;
+              late final IconData timeIcon;
+              late final String greeting;
+              if (hour < 12) {
+                timeIcon = Icons.wb_sunny;
+                greeting = 'Good morning';
+              } else if (hour < 17) {
+                timeIcon = Icons.wb_cloudy;
+                greeting = 'Good afternoon';
+              } else {
+                timeIcon = Icons.nights_stay;
+                greeting = 'Good evening';
+              }
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(timeIcon, size: 16),
-                    const SizedBox(width: 6),
-                    Text(greeting, style: const TextStyle(fontSize: 12)),
-                  ],
-                ),
-                Builder(builder: (innerCtx) {
-                  final profile = innerCtx.watch<ProfileProvider>();
-                  final auth = innerCtx.watch<AuthProvider>();
-                  final displayName = profile.name.isNotEmpty
-                      ? profile.name
-                      : (auth.email != null ? auth.email!.split('@').first : 'Chef');
-                  return Text(displayName, style: Theme.of(innerCtx).textTheme.titleMedium);
-                }),
-              ],
-            );
-          }),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(timeIcon, size: 16),
+                      const SizedBox(width: 6),
+                      Text(greeting, style: const TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                  Builder(
+                    builder: (innerCtx) {
+                      final profile = innerCtx.watch<ProfileProvider>();
+                      final auth = innerCtx.watch<AuthProvider>();
+                      final displayName = profile.name.isNotEmpty
+                          ? profile.name
+                          : (auth.email != null
+                                ? auth.email!.split('@').first
+                                : 'Chef');
+                      return Text(
+                        displayName,
+                        style: Theme.of(innerCtx).textTheme.titleMedium,
+                      );
+                    },
+                  ),
+                ],
+              );
+            },
+          ),
         ),
         centerTitle: false,
         actions: [
@@ -235,7 +307,9 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.all(16.0),
             child: KeyboardListener(
               focusNode: _inputWrapperFocus,
-              onKeyEvent: (evt) { _handleKey(evt, provider); },
+              onKeyEvent: (evt) {
+                _handleKey(evt, provider);
+              },
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -245,8 +319,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _submitInput(provider),
                     decoration: InputDecoration(
-                      hintText: 'Add ingredient (comma / enter to add, #tag supported)',
-                      prefixIcon: Icon(Icons.kitchen_outlined, color: theme.colorScheme.primary),
+                      hintText:
+                          'Add ingredient (comma / enter to add, #tag supported)',
+                      prefixIcon: Icon(
+                        Icons.kitchen_outlined,
+                        color: theme.colorScheme.primary,
+                      ),
                       suffixIcon: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -254,7 +332,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             IconButton(
                               icon: const Icon(Icons.clear),
                               tooltip: 'Clear',
-                              onPressed: () { _controller.clear(); _updateSuggestions(provider); setState(() {}); },
+                              onPressed: () {
+                                _controller.clear();
+                                _updateSuggestions(provider);
+                                setState(() {});
+                              },
                             ),
                           if (_controller.text.isNotEmpty)
                             IconButton(
@@ -268,45 +350,64 @@ class _HomeScreenState extends State<HomeScreen> {
                       fillColor: surfaceFill,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.0),
-                        borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.outlineVariant,
+                        ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.0),
-                        borderSide: BorderSide(color: theme.colorScheme.outlineVariant),
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.outlineVariant,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12.0),
-                        borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
+                        borderSide: BorderSide(
+                          color: theme.colorScheme.primary,
+                          width: 2,
+                        ),
                       ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
                     ),
                     onChanged: (_) {},
                   ),
                   if (showPreview) ...[
                     const SizedBox(height: 6),
-                    Builder(builder: (_) {
-                      final p = preview;
-                      String? qPart;
-                      final min = p.quantityMin;
-                      final max = p.quantityMax;
-                      if (min != null && max != null) {
-                        if (min == max) {
-                          final isInt = min % 1 == 0;
-                          qPart = isInt ? min.toStringAsFixed(0) : min.toStringAsFixed(2);
-                        } else {
-                          qPart = '$min-$max';
+                    Builder(
+                      builder: (_) {
+                        final p = preview;
+                        String? qPart;
+                        final min = p.quantityMin;
+                        final max = p.quantityMax;
+                        if (min != null && max != null) {
+                          if (min == max) {
+                            final isInt = min % 1 == 0;
+                            qPart = isInt
+                                ? min.toStringAsFixed(0)
+                                : min.toStringAsFixed(2);
+                          } else {
+                            qPart = '$min-$max';
+                          }
                         }
-                      }
-                      final unitPart = p.unit != null ? ' ${p.unit}' : '';
-                      final qty = qPart != null ? '$qPart$unitPart ' : '';
-                      final tagsPart = p.tags.isNotEmpty ? '  tags: ${p.tags.join(', ')}' : '';
-                      return Text(
-                        'Parsed as: $qty${p.name}$tagsPart',
-                        style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.secondary),
-                      );
-                    }),
+                        final unitPart = p.unit != null ? ' ${p.unit}' : '';
+                        final qty = qPart != null ? '$qPart$unitPart ' : '';
+                        final tagsPart = p.tags.isNotEmpty
+                            ? '  tags: ${p.tags.join(', ')}'
+                            : '';
+                        return Text(
+                          'Parsed as: $qty${p.name}$tagsPart',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.secondary,
+                          ),
+                        );
+                      },
+                    ),
                   ],
-                  if (_suggestions.isNotEmpty && _controller.text.trim().isNotEmpty) ...[
+                  if (_suggestions.isNotEmpty &&
+                      _controller.text.trim().isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Material(
                       elevation: 3,
@@ -318,20 +419,45 @@ class _HomeScreenState extends State<HomeScreen> {
                           padding: EdgeInsets.zero,
                           shrinkWrap: true,
                           itemCount: _suggestions.length,
-                          itemBuilder: (c,i){
+                          itemBuilder: (c, i) {
                             final s = _suggestions[i];
                             final highlighted = i == _highlightIndex;
                             return InkWell(
-                              borderRadius: i==0? const BorderRadius.vertical(top: Radius.circular(8)) : (i==_suggestions.length-1? const BorderRadius.vertical(bottom: Radius.circular(8)) : BorderRadius.zero),
-                              onTap: ()=> _selectSuggestion(provider, s),
+                              borderRadius: i == 0
+                                  ? const BorderRadius.vertical(
+                                      top: Radius.circular(8),
+                                    )
+                                  : (i == _suggestions.length - 1
+                                        ? const BorderRadius.vertical(
+                                            bottom: Radius.circular(8),
+                                          )
+                                        : BorderRadius.zero),
+                              onTap: () => _selectSuggestion(provider, s),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                decoration: highlighted ? BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.08)) : null,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                                decoration: highlighted
+                                    ? BoxDecoration(
+                                        color: theme.colorScheme.primary
+                                            .withValues(alpha: 0.08),
+                                      )
+                                    : null,
                                 child: Row(
                                   children: [
                                     const Icon(Icons.add, size: 16),
                                     const SizedBox(width: 8),
-                                    Expanded(child: Text(s, style: TextStyle(fontWeight: highlighted? FontWeight.w600: null))),
+                                    Expanded(
+                                      child: Text(
+                                        s,
+                                        style: TextStyle(
+                                          fontWeight: highlighted
+                                              ? FontWeight.w600
+                                              : null,
+                                        ),
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -343,6 +469,28 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ],
               ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _openFilters,
+                    icon: const Icon(Icons.filter_alt_outlined),
+                    label: const Text('Filters'),
+                  ),
+                ),
+                if (_filters.hasNonIngredientFilters ||
+                    _filters.excludeIngredients.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Wrap(children: _buildActiveFilters()),
+                  ),
+              ],
             ),
           ),
           if (provider.ingredients.isNotEmpty)
@@ -376,24 +524,36 @@ class _HomeScreenState extends State<HomeScreen> {
                       return Dismissible(
                         key: ValueKey(ing),
                         background: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: theme.colorScheme.errorContainer,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           alignment: Alignment.centerLeft,
                           padding: const EdgeInsets.only(left: 24),
-                          child: Icon(Icons.delete, color: theme.colorScheme.onErrorContainer),
+                          child: Icon(
+                            Icons.delete,
+                            color: theme.colorScheme.onErrorContainer,
+                          ),
                         ),
                         secondaryBackground: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          margin: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: theme.colorScheme.errorContainer,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: 24),
-                          child: Icon(Icons.delete, color: theme.colorScheme.onErrorContainer),
+                          child: Icon(
+                            Icons.delete,
+                            color: theme.colorScheme.onErrorContainer,
+                          ),
                         ),
                         onDismissed: (_) => _removeIngredient(provider, ing),
                         child: ListTile(
@@ -409,7 +569,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20.0,
+              vertical: 16.0,
+            ),
             child: CustomButton(
               label: 'Search Recipes',
               icon: Icons.search,
@@ -418,7 +581,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   : () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => const SearchScreen()),
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              SearchScreen(initialFilters: _filters),
+                        ),
                       );
                     },
             ),
