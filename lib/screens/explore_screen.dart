@@ -194,9 +194,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       },
       child: Card(
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -290,9 +288,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
               ),
-              child: Container(
-                color: Colors.grey.shade300,
-              ),
+              child: Container(color: Colors.grey.shade300),
             ),
           ),
           Expanded(

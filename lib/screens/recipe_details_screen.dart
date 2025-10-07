@@ -81,18 +81,25 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         title: Text(widget.recipeName),
         actions: [
           IconButton(
-            icon: Icon(isFav ? Icons.favorite : Icons.favorite_border, color: isFav ? Colors.red : null),
-            onPressed: _recipeData == null && !isFav ? null : () {
-              final data = _recipeData;
-              favourites.toggle(
-                FavouriteRecipe(
-                  id: widget.recipeId,
-                  title: widget.recipeName,
-                  image: data!=null ? data['image'] : null,
-                  readyInMinutes: data!=null ? data['readyInMinutes'] : null,
-                ),
-              );
-            },
+            icon: Icon(
+              isFav ? Icons.favorite : Icons.favorite_border,
+              color: isFav ? Colors.red : null,
+            ),
+            onPressed: _recipeData == null && !isFav
+                ? null
+                : () {
+                    final data = _recipeData;
+                    favourites.toggle(
+                      FavouriteRecipe(
+                        id: widget.recipeId,
+                        title: widget.recipeName,
+                        image: data != null ? data['image'] : null,
+                        readyInMinutes: data != null
+                            ? data['readyInMinutes']
+                            : null,
+                      ),
+                    );
+                  },
             tooltip: isFav ? 'Remove favourite' : 'Add to favourites',
           ),
         ],
@@ -100,20 +107,20 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage.isNotEmpty
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      _errorMessage,
-                      style: const TextStyle(fontSize: 16),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16.0),
-                  child: _buildRecipeContent(),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  _errorMessage,
+                  style: const TextStyle(fontSize: 16),
+                  textAlign: TextAlign.center,
                 ),
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: _buildRecipeContent(),
+            ),
       floatingActionButton: _recipeData == null
           ? null
           : FloatingActionButton(
@@ -124,7 +131,6 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             ),
     );
   }
-  
 
   Widget _buildRecipeContent() {
     if (_recipeData == null) {
@@ -153,9 +159,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
               },
             ),
           ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Recipe info
         Wrap(
           spacing: 8,
@@ -174,29 +180,29 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             _buildMarkMadeChip(),
           ],
         ),
-        
+
         const SizedBox(height: 24),
-        
+
         // Ingredients section
         const Text(
           'Ingredients',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        
+
         if (_recipeData!['extendedIngredients'] != null)
           ..._buildIngredientsList(),
-        
+
         const SizedBox(height: 24),
-        
+
         // Instructions section
         const Text(
           'Instructions',
           style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        
-        if (_recipeData!['analyzedInstructions'] != null && 
+
+        if (_recipeData!['analyzedInstructions'] != null &&
             _recipeData!['analyzedInstructions'].isNotEmpty)
           ..._buildInstructionsList()
         else if (_recipeData!['instructions'] != null)
@@ -231,13 +237,15 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                 height: MediaQuery.of(ctx).size.height * 0.65,
                 decoration: BoxDecoration(
                   color: Theme.of(ctx).colorScheme.surface,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.15),
                       blurRadius: 16,
                       offset: const Offset(0, -4),
-                    )
+                    ),
                   ],
                 ),
                 child: Column(
@@ -258,7 +266,13 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                         children: [
                           const Icon(Icons.smart_toy, size: 22),
                           const SizedBox(width: 8),
-                          const Text('AI Insights', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text(
+                            'AI Insights',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const Spacer(),
                           IconButton(
                             icon: const Icon(Icons.close),
@@ -280,17 +294,37 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                               spacing: 8,
                               runSpacing: 4,
                               children: [
-                                _buildAiTabChip(sheetSetState, index: 0, label: 'Summary'),
-                                _buildAiTabChip(sheetSetState, index: 1, label: 'Substitutions'),
-                                _buildAiTabChip(sheetSetState, index: 2, label: 'Q&A'),
+                                _buildAiTabChip(
+                                  sheetSetState,
+                                  index: 0,
+                                  label: 'Summary',
+                                ),
+                                _buildAiTabChip(
+                                  sheetSetState,
+                                  index: 1,
+                                  label: 'Substitutions',
+                                ),
+                                _buildAiTabChip(
+                                  sheetSetState,
+                                  index: 2,
+                                  label: 'Q&A',
+                                ),
                               ],
                             ),
                             const SizedBox(height: 16),
-                            if (_aiTabIndex == 0) ..._buildSummaryTabContent(sheetSetState, recipe) else if (_aiTabIndex == 1) ..._buildSubsTabContent(sheetSetState, recipe) else ..._buildQATabContent(sheetSetState, recipe),
+                            if (_aiTabIndex == 0)
+                              ..._buildSummaryTabContent(sheetSetState, recipe)
+                            else if (_aiTabIndex == 1)
+                              ..._buildSubsTabContent(sheetSetState, recipe)
+                            else
+                              ..._buildQATabContent(sheetSetState, recipe),
                             const SizedBox(height: 24),
                             Text(
                               'AI suggestions may be imperfect. Always follow food safety best practices.',
-                              style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                              ),
                             ),
                           ],
                         ),
@@ -306,67 +340,126 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     );
   }
 
-  Widget _buildAiTabChip(StateSetter sheetSetState, {required int index, required String label}) {
+  Widget _buildAiTabChip(
+    StateSetter sheetSetState, {
+    required int index,
+    required String label,
+  }) {
     final selected = _aiTabIndex == index;
     return ChoiceChip(
       label: Text(label),
       selected: selected,
-      onSelected: (_) => sheetSetState(() { _aiTabIndex = index; }),
+      onSelected: (_) => sheetSetState(() {
+        _aiTabIndex = index;
+      }),
       selectedColor: Theme.of(context).colorScheme.primaryContainer,
       labelStyle: TextStyle(
-        color: selected ? Theme.of(context).colorScheme.onPrimaryContainer : Theme.of(context).colorScheme.onSurface,
+        color: selected
+            ? Theme.of(context).colorScheme.onPrimaryContainer
+            : Theme.of(context).colorScheme.onSurface,
         fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
       ),
     );
   }
 
-  List<Widget> _buildSummaryTabContent(StateSetter sheetSetState, Map<String, dynamic> recipe) {
+  List<Widget> _buildSummaryTabContent(
+    StateSetter sheetSetState,
+    Map<String, dynamic> recipe,
+  ) {
     return [
       Row(
         children: [
           ElevatedButton.icon(
-            onPressed: _loadingSummary ? null : () async {
-              sheetSetState(() { _loadingSummary = true; if (_aiSummary == null) _aiTabIndex = 0; });
-              try { _aiSummary = await AiService.recipeSummary(recipe); } catch (e) { _aiSummary = 'Error: $e'; }
-              if (mounted) sheetSetState(() { _loadingSummary = false; });
-            },
+            onPressed: _loadingSummary
+                ? null
+                : () async {
+                    sheetSetState(() {
+                      _loadingSummary = true;
+                      if (_aiSummary == null) _aiTabIndex = 0;
+                    });
+                    try {
+                      _aiSummary = await AiService.recipeSummary(recipe);
+                    } catch (e) {
+                      _aiSummary = 'Error: $e';
+                    }
+                    if (mounted)
+                      sheetSetState(() {
+                        _loadingSummary = false;
+                      });
+                  },
             icon: const Icon(Icons.summarize),
-            label: Text(_loadingSummary ? 'Loading...' : (_aiSummary==null ? 'Generate Summary' : 'Refresh Summary')),
+            label: Text(
+              _loadingSummary
+                  ? 'Loading...'
+                  : (_aiSummary == null
+                        ? 'Generate Summary'
+                        : 'Refresh Summary'),
+            ),
           ),
         ],
       ),
       const SizedBox(height: 12),
       if (_aiSummary == null && !_loadingSummary)
-        Text('Tap "Generate Summary" to create a concise overview.', style: TextStyle(color: Colors.grey[600], fontSize: 14))
+        Text(
+          'Tap "Generate Summary" to create a concise overview.',
+          style: TextStyle(color: Colors.grey[600], fontSize: 14),
+        )
       else if (_aiSummary != null)
         ..._buildSummaryParagraphs(_aiSummary!),
     ];
   }
 
-  List<Widget> _buildSubsTabContent(StateSetter sheetSetState, Map<String, dynamic> recipe) {
+  List<Widget> _buildSubsTabContent(
+    StateSetter sheetSetState,
+    Map<String, dynamic> recipe,
+  ) {
     return [
       Row(
         children: [
           ElevatedButton.icon(
-            onPressed: _loadingSubs ? null : () async {
-              sheetSetState(() { _loadingSubs = true; if (_aiSubs == null) _aiTabIndex = 1; });
-              try { _aiSubs = await AiService.ingredientSubstitutions(recipe); } catch (e) { _aiSubs = 'Error: $e'; }
-              if (mounted) sheetSetState(() { _loadingSubs = false; });
-            },
+            onPressed: _loadingSubs
+                ? null
+                : () async {
+                    sheetSetState(() {
+                      _loadingSubs = true;
+                      if (_aiSubs == null) _aiTabIndex = 1;
+                    });
+                    try {
+                      _aiSubs = await AiService.ingredientSubstitutions(recipe);
+                    } catch (e) {
+                      _aiSubs = 'Error: $e';
+                    }
+                    if (mounted)
+                      sheetSetState(() {
+                        _loadingSubs = false;
+                      });
+                  },
             icon: const Icon(Icons.sync_alt),
-            label: Text(_loadingSubs ? 'Loading...' : (_aiSubs==null ? 'Generate Substitutions' : 'Refresh Substitutions')),
+            label: Text(
+              _loadingSubs
+                  ? 'Loading...'
+                  : (_aiSubs == null
+                        ? 'Generate Substitutions'
+                        : 'Refresh Substitutions'),
+            ),
           ),
         ],
       ),
       const SizedBox(height: 12),
       if (_aiSubs == null && !_loadingSubs)
-        Text('Tap "Generate Substitutions" for dietary & cost-saving ideas.', style: TextStyle(color: Colors.grey[600], fontSize: 14))
+        Text(
+          'Tap "Generate Substitutions" for dietary & cost-saving ideas.',
+          style: TextStyle(color: Colors.grey[600], fontSize: 14),
+        )
       else if (_aiSubs != null)
         ..._buildSubstitutionChips(_aiSubs!),
     ];
   }
 
-  List<Widget> _buildQATabContent(StateSetter sheetSetState, Map<String, dynamic> recipe) {
+  List<Widget> _buildQATabContent(
+    StateSetter sheetSetState,
+    Map<String, dynamic> recipe,
+  ) {
     return [
       TextField(
         controller: _questionCtrl,
@@ -380,20 +473,38 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       Align(
         alignment: Alignment.centerRight,
         child: ElevatedButton.icon(
-          onPressed: _asking ? null : () async {
-            final q = _questionCtrl.text.trim();
-            if (q.isEmpty) return;
-            sheetSetState(() { _asking = true; _answer = null; });
-            try { _answer = await AiService.askCookingAssistant(q, recipe: recipe); } catch (e) { _answer = 'Error: $e'; }
-            if (mounted) sheetSetState(() { _asking = false; });
-          },
+          onPressed: _asking
+              ? null
+              : () async {
+                  final q = _questionCtrl.text.trim();
+                  if (q.isEmpty) return;
+                  sheetSetState(() {
+                    _asking = true;
+                    _answer = null;
+                  });
+                  try {
+                    _answer = await AiService.askCookingAssistant(
+                      q,
+                      recipe: recipe,
+                    );
+                  } catch (e) {
+                    _answer = 'Error: $e';
+                  }
+                  if (mounted)
+                    sheetSetState(() {
+                      _asking = false;
+                    });
+                },
           icon: const Icon(Icons.send),
           label: Text(_asking ? 'Asking...' : 'Send'),
         ),
       ),
       const SizedBox(height: 12),
       if (_answer == null && !_asking)
-        Text('Type a question and press Send to get help.', style: TextStyle(color: Colors.grey[600], fontSize: 14))
+        Text(
+          'Type a question and press Send to get help.',
+          style: TextStyle(color: Colors.grey[600], fontSize: 14),
+        )
       else if (_answer != null)
         ..._buildSummaryParagraphs(_answer!),
     ];
@@ -446,7 +557,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         ? scheme.surfaceContainerHighest.withValues(alpha: 0.35)
         : scheme.surfaceContainerHighest;
     final border = scheme.outlineVariant.withValues(alpha: isDark ? 0.6 : 0.4);
-    final fg = isMade ? scheme.onPrimaryContainer : (isDark ? scheme.onSurface : scheme.onSurfaceVariant);
+    final fg = isMade
+        ? scheme.onPrimaryContainer
+        : (isDark ? scheme.onSurface : scheme.onSurfaceVariant);
 
     return InkWell(
       borderRadius: BorderRadius.circular(18),
@@ -458,7 +571,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         if (isMade) {
           await dishes.remove(widget.recipeId);
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Removed from Dishes Made')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Removed from Dishes Made')),
+          );
         } else {
           await dishes.markMade(
             recipeId: widget.recipeId,
@@ -466,9 +581,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             image: data['image'],
           );
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Marked as made!')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Marked as made!')));
         }
       },
       child: TweenAnimationBuilder<double>(
@@ -498,7 +613,10 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                 switchOutCurve: Curves.easeIn,
                 transitionBuilder: (child, anim) => FadeTransition(
                   opacity: anim,
-                  child: ScaleTransition(scale: Tween(begin: 0.9, end: 1.0).animate(anim), child: child),
+                  child: ScaleTransition(
+                    scale: Tween(begin: 0.9, end: 1.0).animate(anim),
+                    child: child,
+                  ),
                 ),
                 child: Icon(
                   isMade ? Icons.check_box : Icons.check_box_outline_blank,
@@ -536,7 +654,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                ingredient['original'] ?? ingredient['name'] ?? 'Unknown ingredient',
+                ingredient['original'] ??
+                    ingredient['name'] ??
+                    'Unknown ingredient',
                 style: const TextStyle(fontSize: 16, height: 1.5),
               ),
             ),
@@ -549,12 +669,12 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   List<Widget> _buildInstructionsList() {
     final instructions = _recipeData!['analyzedInstructions'] as List;
     if (instructions.isEmpty) return [];
-    
+
     final steps = instructions[0]['steps'] as List;
     return steps.asMap().entries.map<Widget>((entry) {
       final index = entry.key;
       final step = entry.value;
-      
+
       return Padding(
         padding: const EdgeInsets.only(bottom: 16),
         child: Row(
@@ -593,21 +713,33 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
 
   List<Widget> _buildSummaryParagraphs(String text) {
     final cleaned = text.replaceAll(RegExp(r'[\*_`#]'), '').trim();
-    final paras = cleaned.split(RegExp(r'\n{2,}')).expand((p) {
-      if (p.length > 260) {
-        // further split long paragraphs on sentences
-        return p.split(RegExp(r'(?<=[.!?])\s+'));
-      }
-      return [p];
-    }).where((p) => p.trim().isNotEmpty).toList();
-    return paras.map((p) => Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Text(p.trim(), style: const TextStyle(fontSize: 15, height: 1.4)),
-    )).toList();
+    final paras = cleaned
+        .split(RegExp(r'\n{2,}'))
+        .expand((p) {
+          if (p.length > 260) {
+            // further split long paragraphs on sentences
+            return p.split(RegExp(r'(?<=[.!?])\s+'));
+          }
+          return [p];
+        })
+        .where((p) => p.trim().isNotEmpty)
+        .toList();
+    return paras
+        .map(
+          (p) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              p.trim(),
+              style: const TextStyle(fontSize: 15, height: 1.4),
+            ),
+          ),
+        )
+        .toList();
   }
 
   List<Widget> _buildSubstitutionChips(String raw) {
-    final lines = raw.split('\n')
+    final lines = raw
+        .split('\n')
         .map((l) => l.trim())
         .where((l) => l.startsWith('- '))
         .map((l) => l.substring(2))
@@ -623,27 +755,43 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         children: lines.map((line) {
           String label = line;
           String detail = '';
-            final idx = line.indexOf(':');
-            if (idx != -1) {
-              label = line.substring(0, idx).trim();
-              detail = line.substring(idx + 1).trim();
-            }
+          final idx = line.indexOf(':');
+          if (idx != -1) {
+            label = line.substring(0, idx).trim();
+            detail = line.substring(idx + 1).trim();
+          }
           return ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 240),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                color: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5)),
+                border: Border.all(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label.toUpperCase(), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.primary)),
+                  Text(
+                    label.toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
                   if (detail.isNotEmpty) ...[
                     const SizedBox(height: 4),
-                    Text(detail, style: const TextStyle(fontSize: 13, height: 1.3)),
+                    Text(
+                      detail,
+                      style: const TextStyle(fontSize: 13, height: 1.3),
+                    ),
                   ],
                 ],
               ),
