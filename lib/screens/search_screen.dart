@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../services/spoonacular_service.dart';
-import 'recipe_details_screen.dart';
+
+import '../models/recipe_search_options.dart';
 import '../providers/ingredients_provider.dart';
+import '../services/spoonacular_service.dart';
+import '../utils/recipe_filter_utils.dart';
+import '../widgets/recipe_filter_sheet.dart';
+import 'recipe_details_screen.dart';
 
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({super.key, this.initialFilters, this.initialKeyword});
+
+  final RecipeSearchOptions? initialFilters;
+  final String? initialKeyword;
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -13,8 +20,35 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _keywordController = TextEditingController();
   bool _isLoading = false;
   List<Map<String, dynamic>> _recipes = [];
+  RecipeSearchResponse? _lastResponse;
+  late RecipeSearchOptions _filters;
+
+  @override
+  void initState() {
+    super.initState();
+    _filters = normaliseRecipeSearchOptions(
+      widget.initialFilters ?? kDefaultRecipeFilters,
+    );
+    if (widget.initialKeyword != null && widget.initialKeyword!.isNotEmpty) {
+      _keywordController.text = widget.initialKeyword!;
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant SearchScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialFilters != oldWidget.initialFilters &&
+        widget.initialFilters != null) {
+      _filters = normaliseRecipeSearchOptions(widget.initialFilters!);
+    }
+    if (widget.initialKeyword != oldWidget.initialKeyword &&
+        widget.initialKeyword != null) {
+      _keywordController.text = widget.initialKeyword!;
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -31,25 +65,44 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Future<void> _searchRecipes() async {
     final ingProvider = context.read<IngredientsProvider>();
-    if (ingProvider.ingredients.isEmpty) {
+    final ingredients = List<String>.from(ingProvider.ingredients);
+    final keyword = _keywordController.text.trim();
+    if (ingredients.isEmpty && keyword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add some ingredients first.')),
+        const SnackBar(
+          content: Text('Add ingredients or a keyword to search.'),
+        ),
       );
       return;
     }
-    final ingredients = List<String>.from(ingProvider.ingredients);
     setState(() {
       _isLoading = true;
       _recipes = [];
+      _lastResponse = null;
     });
     try {
-      final recipes = await SpoonacularService.searchRecipesByIngredients(
-        ingredients,
+      final options = _filters.copyWith(
+        includeIngredients: ingredients,
+        query: keyword.isEmpty ? null : keyword,
+        offset: 0,
       );
+
+      late RecipeSearchResponse response;
+
+      if (ingredients.isNotEmpty) {
+        response = await SpoonacularService.searchRecipesByIngredients(
+          ingredients,
+          options: options,
+        );
+      } else {
+        response = await SpoonacularService.complexSearch(options);
+      }
+      final recipes = response.results;
       if (!mounted) return;
       setState(() {
         _recipes = recipes;
         _isLoading = false;
+        _lastResponse = response;
       });
     } catch (e) {
       if (!mounted) return;
@@ -75,6 +128,67 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
+  Future<void> _openFilters() async {
+    final result = await showRecipeFilterSheet(
+      context: context,
+      initialOptions: _filters,
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _filters = normaliseRecipeSearchOptions(result);
+      });
+      await _searchRecipes();
+    }
+  }
+
+  List<Widget> _buildActiveFilters() {
+    return buildActiveFilterChips(
+      filters: _filters,
+      onFiltersChanged: (next) {
+        setState(() {
+          _filters = normaliseRecipeSearchOptions(next);
+        });
+        _searchRecipes();
+      },
+    );
+  }
+
+  List<Widget> _buildRecipeFacts(Map<String, dynamic> recipe) {
+    final used = (recipe['usedIngredientCount'] as num?)?.toInt();
+    final missed = (recipe['missedIngredientCount'] as num?)?.toInt();
+    final ready = (recipe['readyInMinutes'] as num?)?.toInt();
+    final servings = (recipe['servings'] as num?)?.toInt();
+
+    final facts = <Widget>[];
+
+    if (used != null) {
+      facts.add(Text('Used ingredients: $used'));
+    }
+    if (missed != null) {
+      facts.add(Text('Missing ingredients: $missed'));
+    }
+    if (ready != null && ready > 0) {
+      facts.add(Text('Ready in $ready min'));
+    }
+    if (servings != null && servings > 0) {
+      facts.add(Text('Serves $servings'));
+    }
+
+    if (facts.isEmpty) {
+      facts.add(const Text('Tap to view recipe details'));
+    }
+
+    return facts;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _keywordController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final ingProvider = context.watch<IngredientsProvider>();
@@ -85,7 +199,10 @@ class _SearchScreenState extends State<SearchScreen> {
           if (ingProvider.ingredients.isEmpty)
             const Padding(
               padding: EdgeInsets.all(24.0),
-              child: Text('No ingredients. Go back and add some to search.'),
+              child: Text(
+                'No ingredients yet. Add some or try a keyword search below.',
+                textAlign: TextAlign.center,
+              ),
             )
           else
             SizedBox(
@@ -111,6 +228,18 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: TextField(
+              controller: _keywordController,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => _searchRecipes(),
+              decoration: const InputDecoration(
+                labelText: 'Add a keyword (e.g. pasta, tacos, curry)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Row(
               children: [
                 Expanded(
@@ -125,16 +254,54 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 ),
                 const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _openFilters,
+                  icon: const Icon(Icons.filter_alt_outlined),
+                  label: const Text('Filters'),
+                ),
+                const SizedBox(width: 12),
                 FilledButton.icon(
-                  onPressed: ingProvider.ingredients.isEmpty || _isLoading
-                      ? null
-                      : _searchRecipes,
+                  onPressed: _isLoading ? null : _searchRecipes,
                   icon: const Icon(Icons.search),
                   label: const Text('Search'),
                 ),
               ],
             ),
           ),
+          if (_filters.hasNonIngredientFilters ||
+              _filters.excludeIngredients.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Wrap(children: _buildActiveFilters()),
+              ),
+            ),
+          if (_lastResponse != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Found ${_lastResponse!.totalResults} recipes',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  if (_filters.number != _lastResponse!.number &&
+                      _lastResponse!.results.length <
+                          _lastResponse!.totalResults)
+                    Text(
+                      'Showing ${_lastResponse!.results.length} of ${_lastResponse!.totalResults}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    )
+                  else
+                    Text(
+                      'Showing ${_lastResponse!.results.length}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                ],
+              ),
+            ),
           if (_isLoading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_recipes.isNotEmpty)
@@ -179,14 +346,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Used ingredients: ${recipe['usedIngredientCount'] ?? 0}',
-                          ),
-                          Text(
-                            'Missing ingredients: ${recipe['missedIngredientCount'] ?? 0}',
-                          ),
-                        ],
+                        children: _buildRecipeFacts(recipe),
                       ),
                       onTap: () {
                         Navigator.push(
@@ -208,7 +368,7 @@ class _SearchScreenState extends State<SearchScreen> {
             const Expanded(
               child: Center(
                 child: Text(
-                  'No recipes found. Try adjusting ingredients.',
+                  'No recipes found. Try adjusting ingredients or filters.',
                   style: TextStyle(fontSize: 16),
                   textAlign: TextAlign.center,
                 ),
