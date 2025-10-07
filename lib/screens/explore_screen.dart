@@ -131,8 +131,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-          appBar: AppBar(title: const Text('Explore')),
-          body: const Center(child: CircularProgressIndicator()));
+        appBar: AppBar(title: const Text('Explore')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Explore')),
@@ -145,7 +146,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   children: [
                     Text(_errorMessage, textAlign: TextAlign.center),
                     const SizedBox(height: 16),
-                    ElevatedButton(onPressed: _initialLoad, child: const Text('Retry')),
+                    ElevatedButton(
+                      onPressed: _initialLoad,
+                      child: const Text('Retry'),
+                    ),
                   ],
                 ),
               ),
