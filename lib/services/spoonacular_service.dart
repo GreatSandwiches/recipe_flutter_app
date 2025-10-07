@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
+import '../models/recipe_search_options.dart';
+
 class SpoonacularService {
   static const String _baseUrl = 'https://api.spoonacular.com';
   static const int _defaultRecipeCount = 12;
@@ -46,11 +48,10 @@ class SpoonacularService {
   }
 
   // Search recipes by ingredients
-  static Future<List<Map<String, dynamic>>> searchRecipesByIngredients(
-    List<String> ingredients,
-  ) async {
-    final key = _requireApiKey();
-
+  static Future<RecipeSearchResponse> searchRecipesByIngredients(
+    List<String> ingredients, {
+    RecipeSearchOptions? options,
+  }) async {
     final sortedUnique =
         ingredients
             .map((ing) => ing.trim().toLowerCase())
@@ -60,43 +61,72 @@ class SpoonacularService {
           ..sort();
 
     if (sortedUnique.isEmpty) {
-      return const [];
+      return const RecipeSearchResponse(
+        results: [],
+        totalResults: 0,
+        offset: 0,
+        number: 0,
+      );
     }
 
-    final desiredCount = _defaultRecipeCount;
-    final Map<int, Map<String, dynamic>> collected = {};
+    final request = (options ?? const RecipeSearchOptions()).copyWith(
+      includeIngredients: sortedUnique,
+      fillIngredients: true,
+      addRecipeInformation: true,
+      instructionsRequired: true,
+      ignorePantry: options?.ignorePantry ?? true,
+      number: options?.number ?? _defaultRecipeCount,
+      sort: options?.sort ?? 'max-used-ingredients',
+      sortDirection: options?.sortDirection ?? 'desc',
+    );
 
-    void _ingest(List<Map<String, dynamic>> source) {
-      for (final recipe in source) {
-        final id = switch (recipe['id']) {
+    final response = await complexSearch(request);
+
+    if (response.results.length >= (request.number)) {
+      final ranked = [...response.results]..sort(_compareByIngredientUsage);
+      final limited = ranked.length > request.number
+          ? ranked.sublist(0, request.number)
+          : ranked;
+      return response.copyWith(results: limited);
+    }
+
+    if (request.hasNonIngredientFilters) {
+      final ranked = [...response.results]..sort(_compareByIngredientUsage);
+      final limited = ranked.length > request.number
+          ? ranked.sublist(0, request.number)
+          : ranked;
+      return response.copyWith(results: limited);
+    }
+
+    final fallback = await _findByIngredients(
+      sortedUnique,
+      request.number,
+      ignorePantry: request.ignorePantry,
+    );
+
+    final Map<int, Map<String, dynamic>> combined = {};
+    void ingest(List<Map<String, dynamic>> source) {
+      for (final item in source) {
+        final id = switch (item['id']) {
           int value => value,
           num value => value.toInt(),
           _ => null,
         };
-        if (id == null || collected.containsKey(id)) continue;
-        collected[id] = recipe;
+        if (id == null || combined.containsKey(id)) continue;
+        combined[id] = item;
       }
     }
 
-    final complexResults = await _complexSearchByIngredients(
-      sortedUnique,
-      key,
-      desiredCount,
-    );
-    _ingest(complexResults);
+    ingest(response.results);
+    ingest(fallback);
 
-    if (collected.length < desiredCount) {
-      final fallbackResults = await _findByIngredients(
-        sortedUnique,
-        key,
-        desiredCount,
-      );
-      _ingest(fallbackResults);
-    }
+    final ranked = combined.values.toList()..sort(_compareByIngredientUsage);
 
-    final ranked = collected.values.toList()..sort(_compareByIngredientUsage);
+    final limited = ranked.length > request.number
+        ? ranked.sublist(0, request.number)
+        : ranked;
 
-    return ranked;
+    return response.copyWith(results: limited);
   }
 
   // Get recipe details by ID
@@ -118,26 +148,16 @@ class SpoonacularService {
 
   // Search recipes by query
   static Future<List<Map<String, dynamic>>> searchRecipes(String query) async {
-    final key = _requireApiKey();
-
-    final url = Uri.parse('$_baseUrl/recipes/complexSearch').replace(
-      queryParameters: {
-        'query': query,
-        'number': '10',
-        'addRecipeInformation': 'true',
-        'fillIngredients': 'true',
-        'apiKey': key,
-      },
+    final response = await complexSearch(
+      RecipeSearchOptions(
+        query: query,
+        addRecipeInformation: true,
+        fillIngredients: true,
+        instructionsRequired: true,
+        number: 10,
+      ),
     );
-
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> data = json.decode(response.body);
-      return (data['results'] as List).cast<Map<String, dynamic>>();
-    } else {
-      throw _httpError('search recipes', response);
-    }
+    return response.results;
   }
 
   // Get random recipes
@@ -158,51 +178,19 @@ class SpoonacularService {
     }
   }
 
-  static Future<List<Map<String, dynamic>>> _complexSearchByIngredients(
-    List<String> ingredients,
-    String apiKey,
-    int number,
-  ) async {
-    final url = Uri.parse('$_baseUrl/recipes/complexSearch').replace(
-      queryParameters: {
-        'includeIngredients': ingredients.join(','),
-        'number': number.toString(),
-        'sort': 'max-used-ingredients',
-        'sortDirection': 'desc',
-        'fillIngredients': 'true',
-        'addRecipeInformation': 'true',
-        'instructionsRequired': 'true',
-        'ignorePantry': 'true',
-        'apiKey': apiKey,
-      },
-    );
-
-    final response = await http.get(url);
-
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> data = json.decode(response.body);
-      final results = (data['results'] as List?) ?? const [];
-      return results
-          .whereType<Map>()
-          .map((item) => Map<String, dynamic>.from(item))
-          .toList();
-    }
-
-    throw _httpError('search recipes by ingredients (complex)', response);
-  }
-
   static Future<List<Map<String, dynamic>>> _findByIngredients(
     List<String> ingredients,
-    String apiKey,
-    int number,
-  ) async {
+    int number, {
+    bool ignorePantry = true,
+    int ranking = 2,
+  }) async {
     final url = Uri.parse('$_baseUrl/recipes/findByIngredients').replace(
       queryParameters: {
         'ingredients': ingredients.join(','),
         'number': number.toString(),
-        'ranking': '2',
-        'ignorePantry': 'true',
-        'apiKey': apiKey,
+        'ranking': ranking.toString(),
+        'ignorePantry': ignorePantry.toString(),
+        'apiKey': _requireApiKey(),
       },
     );
 
@@ -217,6 +205,32 @@ class SpoonacularService {
     }
 
     throw _httpError('search recipes by ingredients (fallback)', response);
+  }
+
+  static Future<RecipeSearchResponse> complexSearch(
+    RecipeSearchOptions options,
+  ) async {
+    final url = Uri.parse(
+      '$_baseUrl/recipes/complexSearch',
+    ).replace(queryParameters: options.toQueryParameters(_requireApiKey()));
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+      final results = ((data['results'] as List?) ?? const [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
+      return RecipeSearchResponse(
+        results: results,
+        totalResults: (data['totalResults'] as num?)?.toInt() ?? results.length,
+        offset: (data['offset'] as num?)?.toInt() ?? options.offset,
+        number: (data['number'] as num?)?.toInt() ?? options.number,
+      );
+    }
+
+    throw _httpError('complex search', response);
   }
 
   static int _compareByIngredientUsage(
