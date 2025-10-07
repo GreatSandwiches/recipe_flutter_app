@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/recipe_search_options.dart';
 import '../services/spoonacular_service.dart';
 import '../utils/recipe_time_utils.dart';
 import 'recipe_details_screen.dart';
@@ -12,11 +13,92 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   final ScrollController _scrollController = ScrollController();
-  bool _isLoading = true; // initial load
-  bool _isLoadingMore = false; // pagination state
+  bool _isLoading = true;
+  bool _isLoadingMore = false;
   List<Map<String, dynamic>> _featuredRecipes = [];
   String _errorMessage = '';
-  bool _refiningTimes = false; // track background refinement
+  bool _refiningTimes = false;
+  int _selectedCategory = 0;
+  final Map<int, List<Map<String, dynamic>>> _categoryResults = {};
+  final Map<int, RecipeSearchResponse> _categoryMeta = {};
+  final Map<int, int> _categoryNextOffset = {};
+
+  static const List<_ExploreCategory> _categories = [
+    _ExploreCategory(
+      title: 'Discover',
+      subtitle: 'Surprise me with seasonal picks.',
+      icon: Icons.explore,
+      options: null,
+      pageSize: 12,
+    ),
+    _ExploreCategory(
+      title: '30 Min Meals',
+      subtitle: 'Dinner on the table in under half an hour.',
+      icon: Icons.timer,
+      options: const RecipeSearchOptions(
+        maxReadyTime: 30,
+        sort: 'time',
+        sortDirection: 'asc',
+        addRecipeInformation: true,
+        instructionsRequired: true,
+        ignorePantry: true,
+        fillIngredients: true,
+        number: 12,
+      ),
+      pageSize: 12,
+    ),
+    _ExploreCategory(
+      title: 'High Protein',
+      subtitle: 'Fuel up with 25g+ of protein per serving.',
+      icon: Icons.fitness_center,
+      options: const RecipeSearchOptions(
+        numericFilters: {'minProtein': 25},
+        sort: 'protein',
+        sortDirection: 'desc',
+        addRecipeInformation: true,
+        addRecipeNutrition: true,
+        instructionsRequired: true,
+        ignorePantry: true,
+        fillIngredients: true,
+        number: 12,
+      ),
+      pageSize: 12,
+    ),
+    _ExploreCategory(
+      title: 'Veggie Comfort',
+      subtitle: 'Hearty vegetarian mains everyone will love.',
+      icon: Icons.spa,
+      options: const RecipeSearchOptions(
+        diets: ['vegetarian'],
+        mealTypes: ['main course'],
+        sort: 'popularity',
+        sortDirection: 'desc',
+        addRecipeInformation: true,
+        instructionsRequired: true,
+        ignorePantry: true,
+        fillIngredients: true,
+        number: 12,
+      ),
+      pageSize: 12,
+    ),
+    _ExploreCategory(
+      title: 'Low Carb',
+      subtitle: 'Smart picks with under 25g carbs.',
+      icon: Icons.local_fire_department,
+      options: const RecipeSearchOptions(
+        numericFilters: {'maxCarbs': 25, 'maxCalories': 600},
+        sort: 'healthiness',
+        sortDirection: 'desc',
+        addRecipeInformation: true,
+        addRecipeNutrition: true,
+        instructionsRequired: true,
+        ignorePantry: true,
+        fillIngredients: true,
+        number: 12,
+      ),
+      pageSize: 12,
+    ),
+  ];
 
   @override
   void initState() {
@@ -26,17 +108,65 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Future<void> _initialLoad() async {
+    await _loadCategory(_selectedCategory, forceRefresh: true);
+  }
+
+  Future<void> _loadCategory(int index, {bool forceRefresh = false}) async {
+    if (!mounted) return;
+
+    // Update selection immediately for visual feedback.
+    if (_selectedCategory != index) {
+      setState(() {
+        _selectedCategory = index;
+      });
+    }
+
+    if (!forceRefresh && _categoryResults.containsKey(index)) {
+      setState(() {
+        _featuredRecipes = _categoryResults[index]!;
+        _isLoading = false;
+        _errorMessage = '';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = '';
+      _selectedCategory = index;
     });
+
+    final category = _categories[index];
+
     try {
-      final recipes = await SpoonacularService.getRandomRecipes(12);
-      if (!mounted) return;
-      _featuredRecipes = recipes;
-      _isLoading = false;
-      setState(() {});
-      _refineRecipeTimesFor(recipes); // refine just fetched
+      if (category.options == null) {
+        final recipes = await SpoonacularService.getRandomRecipes(
+          category.pageSize,
+        );
+        if (!mounted) return;
+        _featuredRecipes = List<Map<String, dynamic>>.from(recipes);
+        _categoryResults[index] = _featuredRecipes;
+        _categoryMeta.remove(index);
+        _categoryNextOffset.remove(index);
+      } else {
+        final request = category.options!.copyWith(
+          offset: 0,
+          number: category.pageSize,
+        );
+        final response = await SpoonacularService.complexSearch(request);
+        if (!mounted) return;
+        _featuredRecipes = List<Map<String, dynamic>>.from(response.results);
+        _categoryResults[index] = _featuredRecipes;
+        _categoryMeta[index] = response;
+        _categoryNextOffset[index] = response.offset + response.number;
+      }
+
+      setState(() {
+        _isLoading = false;
+        _errorMessage = '';
+      });
+
+      _refineRecipeTimesFor(_featuredRecipes);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -47,7 +177,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Future<void> _refresh() async {
-    await _initialLoad();
+    await _loadCategory(_selectedCategory, forceRefresh: true);
   }
 
   void _onScroll() {
@@ -59,26 +189,102 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
   Future<void> _maybeLoadMore() async {
     if (_isLoading || _isLoadingMore) return;
+
+    final category = _categories[_selectedCategory];
+
+    if (category.options == null) {
+      await _loadMoreRandom(category.pageSize);
+      return;
+    }
+
+    final existing = _categoryResults[_selectedCategory] ?? [];
+    final meta = _categoryMeta[_selectedCategory];
+    final total = meta?.totalResults ?? 0;
+    if (meta != null && total == 0) {
+      return;
+    }
+    if (total > 0 && existing.length >= total) {
+      return;
+    }
+
+    final nextOffset =
+        _categoryNextOffset[_selectedCategory] ?? meta?.offset ?? 0;
+    await _loadMoreForCategory(category, nextOffset);
+  }
+
+  Future<void> _loadMoreRandom(int count) async {
     setState(() {
       _isLoadingMore = true;
     });
     try {
-      final newRecipes = await SpoonacularService.getRandomRecipes(12);
+      final newRecipes = await SpoonacularService.getRandomRecipes(count);
       if (!mounted) return;
-      // de-duplicate by id
       final existingIds = _featuredRecipes.map((e) => e['id']).toSet();
       final filtered = newRecipes
-          .where((r) => !existingIds.contains(r['id']))
+          .where((recipe) => !existingIds.contains(recipe['id']))
           .toList();
       if (filtered.isNotEmpty) {
         _featuredRecipes.addAll(filtered);
+        _categoryResults[_selectedCategory] = _featuredRecipes;
         setState(() {});
         _refineRecipeTimesFor(filtered);
       } else {
-        setState(() {}); // still update to hide loader
+        setState(() {});
       }
     } catch (_) {
-      if (mounted) setState(() {}); // ignore load-more errors silently for now
+      if (mounted) setState(() {});
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingMore = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadMoreForCategory(
+    _ExploreCategory category,
+    int offset,
+  ) async {
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final response = await SpoonacularService.complexSearch(
+        category.options!.copyWith(offset: offset, number: category.pageSize),
+      );
+      if (!mounted) return;
+
+      final existing = List<Map<String, dynamic>>.from(
+        _categoryResults[_selectedCategory] ?? [],
+      );
+      final seenIds = existing.map((e) => e['id']).toSet();
+
+      final filtered = response.results.where((recipe) {
+        final id = recipe['id'];
+        if (seenIds.contains(id)) {
+          return false;
+        }
+        seenIds.add(id);
+        return true;
+      }).toList();
+
+      if (filtered.isNotEmpty) {
+        existing.addAll(filtered);
+        _categoryResults[_selectedCategory] = existing;
+        _featuredRecipes = existing;
+        setState(() {});
+        _refineRecipeTimesFor(filtered);
+      } else {
+        setState(() {});
+      }
+
+      _categoryMeta[_selectedCategory] = response;
+      _categoryNextOffset[_selectedCategory] =
+          response.offset + response.number;
+    } catch (_) {
+      if (mounted) setState(() {});
     } finally {
       if (mounted) {
         setState(() {
@@ -89,7 +295,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Future<void> _refineRecipeTimesFor(List<Map<String, dynamic>> subset) async {
-    if (_refiningTimes) return; // simple guard; could queue but unnecessary
+    if (_refiningTimes || subset.isEmpty) return;
     _refiningTimes = true;
     try {
       final candidates = subset
@@ -110,13 +316,15 @@ class _ExploreScreenState extends State<ExploreScreen> {
             });
           }
         } catch (_) {
-          /* ignore */
+          // ignore individual failures
         }
         if (!mounted) return;
       }
     } finally {
       _refiningTimes = false;
-      if (mounted) setState(() {});
+      if (mounted) {
+        setState(() {});
+      }
     }
   }
 
@@ -127,6 +335,34 @@ class _ExploreScreenState extends State<ExploreScreen> {
     super.dispose();
   }
 
+  Widget _buildCategorySelector() {
+    return SizedBox(
+      height: 60,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        scrollDirection: Axis.horizontal,
+        itemBuilder: (context, index) {
+          final category = _categories[index];
+          final selected = index == _selectedCategory;
+          return ChoiceChip(
+            label: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(category.icon, size: 18),
+                const SizedBox(width: 6),
+                Text(category.title),
+              ],
+            ),
+            selected: selected,
+            onSelected: (_) => _loadCategory(index),
+          );
+        },
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemCount: _categories.length,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -135,6 +371,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
         body: const Center(child: CircularProgressIndicator()),
       );
     }
+
+    final category = _categories[_selectedCategory];
+
     return Scaffold(
       appBar: AppBar(title: const Text('Explore')),
       body: _errorMessage.isNotEmpty
@@ -147,34 +386,81 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     Text(_errorMessage, textAlign: TextAlign.center),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: _initialLoad,
+                      onPressed: () =>
+                          _loadCategory(_selectedCategory, forceRefresh: true),
                       child: const Text('Retry'),
                     ),
                   ],
                 ),
               ),
             )
-          : RefreshIndicator(
-              onRefresh: _refresh,
-              child: GridView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(16),
-                physics: const AlwaysScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.75,
+          : Column(
+              children: [
+                _buildCategorySelector(),
+                if (category.subtitle.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        category.subtitle,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 4),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _refresh,
+                    child: _featuredRecipes.isEmpty
+                        ? ListView(
+                            controller: _scrollController,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 32,
+                              vertical: 48,
+                            ),
+                            children: const [
+                              Icon(
+                                Icons.restaurant_outlined,
+                                size: 48,
+                                color: Colors.grey,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No recipes matched these filters yet. Try adjusting the category or refresh for new ideas.',
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          )
+                        : GridView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.all(16),
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 16,
+                                  childAspectRatio: 0.75,
+                                ),
+                            itemCount:
+                                _featuredRecipes.length +
+                                (_isLoadingMore ? 2 : 0),
+                            itemBuilder: (context, index) {
+                              if (index >= _featuredRecipes.length) {
+                                return _buildLoadingCard();
+                              }
+                              final recipe = _featuredRecipes[index];
+                              return _buildRecipeCard(recipe);
+                            },
+                          ),
+                  ),
                 ),
-                itemCount: _featuredRecipes.length + (_isLoadingMore ? 2 : 0),
-                itemBuilder: (context, index) {
-                  if (index >= _featuredRecipes.length) {
-                    return _buildLoadingCard();
-                  }
-                  final recipe = _featuredRecipes[index];
-                  return _buildRecipeCard(recipe);
-                },
-              ),
+              ],
             ),
     );
   }
@@ -338,4 +624,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
       ),
     );
   }
+}
+
+class _ExploreCategory {
+  const _ExploreCategory({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.options,
+    required this.pageSize,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final RecipeSearchOptions? options;
+  final int pageSize;
 }
