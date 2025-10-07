@@ -120,14 +120,15 @@ class SpoonacularService {
   static Future<List<Map<String, dynamic>>> searchRecipes(String query) async {
     final key = _requireApiKey();
 
-    final url = Uri.parse('$_baseUrl/recipes/complexSearch')
-        .replace(queryParameters: {
-      'query': query,
-      'number': '10',
-      'addRecipeInformation': 'true',
-      'fillIngredients': 'true',
-      'apiKey': key,
-    });
+    final url = Uri.parse('$_baseUrl/recipes/complexSearch').replace(
+      queryParameters: {
+        'query': query,
+        'number': '10',
+        'addRecipeInformation': 'true',
+        'fillIngredients': 'true',
+        'apiKey': key,
+      },
+    );
 
     final response = await http.get(url);
 
@@ -143,11 +144,9 @@ class SpoonacularService {
   static Future<List<Map<String, dynamic>>> getRandomRecipes(int number) async {
     final key = _requireApiKey();
 
-    final url = Uri.parse('$_baseUrl/recipes/random')
-        .replace(queryParameters: {
-      'number': number.toString(),
-      'apiKey': key,
-    });
+    final url = Uri.parse(
+      '$_baseUrl/recipes/random',
+    ).replace(queryParameters: {'number': number.toString(), 'apiKey': key});
 
     final response = await http.get(url);
 
