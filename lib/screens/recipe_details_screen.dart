@@ -1116,10 +1116,11 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                     } catch (e) {
                       _aiSummary = 'Error: $e';
                     }
-                    if (mounted)
+                    if (mounted) {
                       sheetSetState(() {
                         _loadingSummary = false;
                       });
+                    }
                   },
             icon: const Icon(Icons.summarize),
             label: Text(
@@ -1163,10 +1164,11 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                     } catch (e) {
                       _aiSubs = 'Error: $e';
                     }
-                    if (mounted)
+                    if (mounted) {
                       sheetSetState(() {
                         _loadingSubs = false;
                       });
+                    }
                   },
             icon: const Icon(Icons.sync_alt),
             label: Text(
@@ -1224,10 +1226,11 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                   } catch (e) {
                     _answer = 'Error: $e';
                   }
-                  if (mounted)
+                  if (mounted) {
                     sheetSetState(() {
                       _asking = false;
                     });
+                  }
                 },
           icon: const Icon(Icons.send),
           label: Text(_asking ? 'Asking...' : 'Send'),
