@@ -111,11 +111,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: _loading ? null : () => setState(() { _isSignUp = !_isSignUp; }),
                     child: Text(_isSignUp ? 'Have an account? Login' : 'Need an account? Sign Up'),
                   ),
-                  const SizedBox(height: 12),
-                  OutlinedButton(
-                    onPressed: _loading ? null : () => Navigator.of(context).maybePop(),
-                    child: const Text('Cancel'),
-                  ),
                 ],
               ),
             ),
