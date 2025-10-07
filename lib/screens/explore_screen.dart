@@ -51,7 +51,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 300) {
       _maybeLoadMore();
     }
   }
@@ -66,7 +67,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
       if (!mounted) return;
       // de-duplicate by id
       final existingIds = _featuredRecipes.map((e) => e['id']).toSet();
-      final filtered = newRecipes.where((r) => !existingIds.contains(r['id'])).toList();
+      final filtered = newRecipes
+          .where((r) => !existingIds.contains(r['id']))
+          .toList();
       if (filtered.isNotEmpty) {
         _featuredRecipes.addAll(filtered);
         setState(() {});
