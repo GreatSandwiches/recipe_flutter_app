@@ -384,8 +384,10 @@ class ProfileScreen extends StatelessWidget {
                               if (auth.isLoggedIn) {
                                 auth.logout();
                                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logged out')));
+                                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                              } else {
+                                Navigator.pushNamed(context, '/login');
                               }
-                              Navigator.pushNamed(context, '/login');
                             },
                           ),
                         ),
