@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/spoonacular_service.dart';
+import '../utils/recipe_time_utils.dart';
 import 'recipe_details_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
@@ -50,7 +51,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 300) {
       _maybeLoadMore();
     }
   }
@@ -65,7 +67,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
       if (!mounted) return;
       // de-duplicate by id
       final existingIds = _featuredRecipes.map((e) => e['id']).toSet();
-      final filtered = newRecipes.where((r) => !existingIds.contains(r['id'])).toList();
+      final filtered = newRecipes
+          .where((r) => !existingIds.contains(r['id']))
+          .toList();
       if (filtered.isNotEmpty) {
         _featuredRecipes.addAll(filtered);
         setState(() {});
@@ -78,71 +82,27 @@ class _ExploreScreenState extends State<ExploreScreen> {
     } finally {
       if (mounted) {
         setState(() {
-        _isLoadingMore = false;
-      });
+          _isLoadingMore = false;
+        });
       }
     }
-  }
-
-  int? _computeBetterTime(Map<String, dynamic> details) {
-    final ready = details['readyInMinutes'];
-    final prep = details['preparationMinutes'];
-    final cook = details['cookingMinutes'];
-    final additional = details['additionalMinutes'];
-    int sumParts = 0;
-    if (prep is int && prep > 0) sumParts += prep;
-    if (cook is int && cook > 0) sumParts += cook;
-    if (additional is int && additional > 0) sumParts += additional;
-
-    int stepsTotal = 0;
-    final analyzed = details['analyzedInstructions'];
-    if (analyzed is List && analyzed.isNotEmpty) {
-      for (final instr in analyzed) {
-        final steps = instr is Map ? instr['steps'] : null;
-        if (steps is List) {
-          for (final step in steps) {
-            if (step is Map) {
-              final length = step['length'];
-              if (length is Map) {
-                final num = length['number'];
-                final unit = (length['unit'] ?? '').toString().toLowerCase();
-                if (num is int && num > 0) {
-                  if (unit.contains('min')) {
-                    stepsTotal += num;
-                  } else if (unit.contains('hour')) stepsTotal += num * 60;
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-
-    int derived = 0;
-    if (sumParts > 0) derived = sumParts;
-    if (stepsTotal > 0) {
-      if (derived == 0) {
-        derived = stepsTotal;
-      } else if ((stepsTotal - derived).abs() / derived > 0.2) {
-        if (derived == 45 && stepsTotal != 45) {
-          derived = stepsTotal;
-        } else if (stepsTotal < derived && stepsTotal >= (derived * 0.5)) derived = stepsTotal;
-      }
-    }
-    if (derived == 0 && ready is int && ready > 0) derived = ready;
-    if (ready == 45 && derived != 45 && derived > 0) return derived;
-    return derived > 0 ? derived : null;
   }
 
   Future<void> _refineRecipeTimesFor(List<Map<String, dynamic>> subset) async {
     if (_refiningTimes) return; // simple guard; could queue but unnecessary
     _refiningTimes = true;
     try {
-      final candidates = subset.where((r) => r['readyInMinutes'] == null || r['readyInMinutes'] == 45).toList();
+      final candidates = subset
+          .where(
+            (r) => r['readyInMinutes'] == null || r['readyInMinutes'] == 45,
+          )
+          .toList();
       for (final recipe in candidates) {
         try {
-          final details = await SpoonacularService.getRecipeDetails(recipe['id']);
-          final better = _computeBetterTime(details);
+          final details = await SpoonacularService.getRecipeDetails(
+            recipe['id'],
+          );
+          final better = deriveReadyInMinutes(details);
           if (better != null && better != recipe['readyInMinutes']) {
             if (!mounted) return;
             setState(() {
@@ -171,8 +131,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-          appBar: AppBar(title: const Text('Explore')),
-          body: const Center(child: CircularProgressIndicator()));
+        appBar: AppBar(title: const Text('Explore')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Explore')),
@@ -185,7 +146,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   children: [
                     Text(_errorMessage, textAlign: TextAlign.center),
                     const SizedBox(height: 16),
-                    ElevatedButton(onPressed: _initialLoad, child: const Text('Retry')),
+                    ElevatedButton(
+                      onPressed: _initialLoad,
+                      child: const Text('Retry'),
+                    ),
                   ],
                 ),
               ),
@@ -230,9 +194,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       },
       child: Card(
         elevation: 4,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -326,9 +288,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 topLeft: Radius.circular(12),
                 topRight: Radius.circular(12),
               ),
-              child: Container(
-                color: Colors.grey.shade300,
-              ),
+              child: Container(color: Colors.grey.shade300),
             ),
           ),
           Expanded(
