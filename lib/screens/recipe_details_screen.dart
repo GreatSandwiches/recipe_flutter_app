@@ -4,13 +4,14 @@ import '../services/spoonacular_service.dart';
 import '../providers/favourites_provider.dart';
 import '../services/ai_service.dart';
 import '../providers/dishes_provider.dart';
+import '../utils/recipe_time_utils.dart';
 
 class RecipeDetailsScreen extends StatefulWidget {
   final int recipeId;
   final String recipeName;
 
   const RecipeDetailsScreen({
-    super.key, 
+    super.key,
     required this.recipeId,
     required this.recipeName,
   });
@@ -41,10 +42,17 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
 
   Future<void> _loadRecipeDetails() async {
     try {
-      final recipeData = await SpoonacularService.getRecipeDetails(widget.recipeId);
+      final recipeData = await SpoonacularService.getRecipeDetails(
+        widget.recipeId,
+      );
+      final normalized = Map<String, dynamic>.from(recipeData);
+      final refined = deriveReadyInMinutes(normalized);
+      if (refined != null) {
+        normalized['readyInMinutes'] = refined;
+      }
       if (mounted) {
         setState(() {
-          _recipeData = recipeData;
+          _recipeData = normalized;
           _isLoading = false;
         });
       }
