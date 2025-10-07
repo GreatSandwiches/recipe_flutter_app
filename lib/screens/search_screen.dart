@@ -37,18 +37,28 @@ class _SearchScreenState extends State<SearchScreen> {
       );
       return;
     }
-    final query = ingProvider.ingredients.join(',');
-    setState(() { _isLoading = true; _recipes = []; });
+    final ingredients = List<String>.from(ingProvider.ingredients);
+    setState(() {
+      _isLoading = true;
+      _recipes = [];
+    });
     try {
-      final recipes = await SpoonacularService.searchRecipesByIngredients(query);
+      final recipes = await SpoonacularService.searchRecipesByIngredients(
+        ingredients,
+      );
       if (!mounted) return;
-      setState(() { _recipes = recipes; _isLoading = false; });
+      setState(() {
+        _recipes = recipes;
+        _isLoading = false;
+      });
     } catch (e) {
       if (!mounted) return;
-      setState(() { _isLoading = false; });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to search recipes: $e')),
-      );
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to search recipes: $e')));
     }
   }
 
@@ -59,7 +69,9 @@ class _SearchScreenState extends State<SearchScreen> {
     if (provider.ingredients.isNotEmpty) {
       _searchRecipes();
     } else {
-      setState(() { _recipes = []; });
+      setState(() {
+        _recipes = [];
+      });
     }
   }
 
