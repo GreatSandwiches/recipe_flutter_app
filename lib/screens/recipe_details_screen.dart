@@ -20,10 +20,375 @@ class RecipeDetailsScreen extends StatefulWidget {
   State<RecipeDetailsScreen> createState() => _RecipeDetailsScreenState();
 }
 
+class _MacroData {
+  const _MacroData({
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.color,
+  });
+
+  final String label;
+  final double value;
+  final String unit;
+  final Color color;
+}
+
+class _DailyNeedItem {
+  const _DailyNeedItem({
+    required this.title,
+    required this.amount,
+    required this.percent,
+  });
+
+  final String title;
+  final String amount;
+  final double percent;
+}
+
+class _CostIngredient {
+  const _CostIngredient({required this.name, required this.price, this.amount});
+
+  final String name;
+  final double price;
+  final String? amount;
+}
+
+class _AmountParts {
+  const _AmountParts(this.value, this.unit);
+
+  final double value;
+  final String unit;
+}
+
+class _MacroGauge extends StatelessWidget {
+  const _MacroGauge({
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.color,
+    required this.maxValue,
+  });
+
+  final String label;
+  final double value;
+  final String unit;
+  final Color color;
+  final double maxValue;
+
+  @override
+  Widget build(BuildContext context) {
+    final clamped = maxValue <= 0
+        ? 0.0
+        : (value / maxValue).clamp(0.0, 1.0).toDouble();
+    final valueLabel = value % 1 == 0
+        ? value.toStringAsFixed(0)
+        : value.toStringAsFixed(1);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 110,
+          width: 110,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: clamped),
+            duration: const Duration(milliseconds: 650),
+            curve: Curves.easeOutCubic,
+            builder: (context, progress, _) {
+              final scheme = Theme.of(context).colorScheme;
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox(
+                    height: 104,
+                    width: 104,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 10,
+                      value: progress,
+                      backgroundColor: color.withValues(alpha: 0.15),
+                      valueColor: AlwaysStoppedAnimation<Color>(color),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: scheme.surface,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          valueLabel,
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ) ??
+                              TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: scheme.onSurface,
+                              ),
+                        ),
+                        Text(
+                          unit,
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ) ??
+                              TextStyle(
+                                fontSize: 12,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          label,
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+}
+
+class _DailyNeedsList extends StatelessWidget {
+  const _DailyNeedsList({
+    required this.label,
+    required this.color,
+    required this.items,
+  });
+
+  final String label;
+  final Color color;
+  final List<_DailyNeedItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    if (items.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: theme.textTheme.titleSmall?.copyWith(color: color),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'No highlights yet',
+            style: theme.textTheme.bodySmall?.copyWith(color: scheme.outline),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: theme.textTheme.titleSmall?.copyWith(color: color)),
+        const SizedBox(height: 8),
+        ...items.map((item) {
+          final percent = (item.percent / 100).clamp(0.0, 1.0).toDouble();
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.title,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${item.percent.toStringAsFixed(0)}%',
+                      style: theme.textTheme.bodySmall?.copyWith(color: color),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    minHeight: 8,
+                    value: percent,
+                    backgroundColor: color.withValues(alpha: 0.15),
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                  ),
+                ),
+                if (item.amount.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    item.amount,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }),
+      ],
+    );
+  }
+}
+
+class _CostBigNumber extends StatelessWidget {
+  const _CostBigNumber({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      width: 160,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            value,
+            style:
+                theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ) ??
+                TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurface,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IngredientCostBar extends StatelessWidget {
+  const _IngredientCostBar({
+    required this.name,
+    required this.price,
+    required this.share,
+    this.amount,
+  });
+
+  final String name;
+  final double price;
+  final double share;
+  final String? amount;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final displayPrice = '\$${(price / 100).toStringAsFixed(2)}';
+    final percentLabel = share > 0 ? '${(share * 100).round()}%' : 'N/A';
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  name,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(displayPrice, style: theme.textTheme.bodyMedium),
+              const SizedBox(width: 8),
+              Text(
+                percentLabel,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(
+              begin: 0,
+              end: share.clamp(0.0, 1.0).toDouble(),
+            ),
+            duration: const Duration(milliseconds: 600),
+            curve: Curves.easeOutCubic,
+            builder: (context, value, _) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: LinearProgressIndicator(
+                  minHeight: 10,
+                  value: value,
+                  backgroundColor: scheme.primary.withValues(alpha: 0.12),
+                  valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
+                ),
+              );
+            },
+          ),
+          if (amount != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              amount!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _recipeData;
+  Map<String, dynamic>? _nutritionData;
+  Map<String, dynamic>? _costData;
   String _errorMessage = '';
+  String? _nutritionError;
+  String? _costError;
   // AI additions
   String? _aiSummary;
   String? _aiSubs;
@@ -41,6 +406,20 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
 
   Future<void> _loadRecipeDetails() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = '';
+      _nutritionError = null;
+      _costError = null;
+    });
+
+    final nutritionFuture = SpoonacularService.getRecipeNutritionWidget(
+      widget.recipeId,
+    );
+    final costFuture = SpoonacularService.getRecipeCostBreakdown(
+      widget.recipeId,
+    );
+
     try {
       final recipeData = await SpoonacularService.getRecipeDetails(
         widget.recipeId,
@@ -50,9 +429,33 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       if (refined != null) {
         normalized['readyInMinutes'] = refined;
       }
+
+      Map<String, dynamic>? nutrition;
+      Map<String, dynamic>? cost;
+      String? nutritionError;
+      String? costError;
+
+      try {
+        nutrition = await nutritionFuture;
+      } catch (e) {
+        nutrition = null;
+        nutritionError = 'Unable to load nutrition info: $e';
+      }
+
+      try {
+        cost = await costFuture;
+      } catch (e) {
+        cost = null;
+        costError = 'Unable to load cost breakdown: $e';
+      }
+
       if (mounted) {
         setState(() {
           _recipeData = normalized;
+          _nutritionData = nutrition;
+          _costData = cost;
+          _nutritionError = nutritionError;
+          _costError = costError;
           _isLoading = false;
         });
       }
@@ -61,6 +464,8 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
         setState(() {
           _isLoading = false;
           _errorMessage = 'Failed to load recipe details: $e';
+          _nutritionData = null;
+          _costData = null;
         });
       }
     }
@@ -183,6 +588,12 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
 
         const SizedBox(height: 24),
 
+        ..._buildNutritionSection(),
+        ..._buildCostSection(),
+
+        if (_nutritionData != null || _costData != null)
+          const SizedBox(height: 16),
+
         // Ingredients section
         const Text(
           'Ingredients',
@@ -217,6 +628,329 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
           ),
       ],
     );
+  }
+
+  List<Widget> _buildNutritionSection() {
+    final data = _nutritionData;
+    if (data == null) {
+      if (_nutritionError == null) {
+        return const [];
+      }
+      return [
+        _buildSectionTitle(Icons.local_fire_department, 'Nutrition Highlights'),
+        const SizedBox(height: 8),
+        Text(
+          _nutritionError!,
+          style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+        ),
+        const SizedBox(height: 24),
+      ];
+    }
+
+    final macros = _extractMacros(data);
+    if (macros.isEmpty) {
+      return const [];
+    }
+
+    final maxMacro = macros
+        .map((m) => m.value)
+        .fold<double>(0, (prev, element) => element > prev ? element : prev);
+    final good = _topDailyNeeds(data['good']);
+    final bad = _topDailyNeeds(data['bad']);
+
+    return [
+      _buildSectionTitle(Icons.local_fire_department, 'Nutrition Highlights'),
+      const SizedBox(height: 12),
+      Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 0,
+        color: Theme.of(context)
+            .colorScheme
+            .surfaceContainerHighest
+            .withValues(alpha: 0.35),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth > 420;
+              final itemsPerRow = isWide ? macros.length : 2;
+              final rawWidth =
+                  constraints.maxWidth / itemsPerRow -
+                  (itemsPerRow > 1 ? 12 : 0);
+              final tileWidth = rawWidth.clamp(120.0, 160.0).toDouble();
+              return Wrap(
+                spacing: 24,
+                runSpacing: 24,
+                alignment: WrapAlignment.spaceEvenly,
+                children: macros
+                    .map(
+                      (macro) => SizedBox(
+                        width: tileWidth,
+                        child: _MacroGauge(
+                          label: macro.label,
+                          value: macro.value,
+                          unit: macro.unit,
+                          color: macro.color,
+                          maxValue: maxMacro == 0 ? 1 : maxMacro,
+                        ),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+          ),
+        ),
+      ),
+      if (good.isNotEmpty || bad.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          elevation: 0,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Daily Impact',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _DailyNeedsList(
+                        label: 'Boosts',
+                        color: Colors.teal,
+                        items: good,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _DailyNeedsList(
+                        label: 'Watch out',
+                        color: Colors.deepOrange,
+                        items: bad,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+      const SizedBox(height: 24),
+    ];
+  }
+
+  List<Widget> _buildCostSection() {
+    final data = _costData;
+    if (data == null) {
+      if (_costError == null) {
+        return const [];
+      }
+      return [
+        _buildSectionTitle(Icons.attach_money, 'Estimated Cost'),
+        const SizedBox(height: 8),
+        Text(
+          _costError!,
+          style: const TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+        ),
+        const SizedBox(height: 24),
+      ];
+    }
+
+    final totalCost = _asDouble(data['totalCost']);
+    final costPerServing = _asDouble(data['totalCostPerServing']);
+    final servings = _recipeData != null
+        ? _asInt(_recipeData!['servings'])
+        : null;
+    final ingredients = _extractCostIngredients(data);
+
+    return [
+      _buildSectionTitle(Icons.attach_money, 'Estimated Cost'),
+      const SizedBox(height: 12),
+      Card(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        elevation: 0,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Wrap(
+                spacing: 24,
+                runSpacing: 16,
+                children: [
+                  _CostBigNumber(
+                    label: 'Per serving',
+                    value: _formatCost(costPerServing),
+                  ),
+                  _CostBigNumber(
+                    label:
+                        'Total${servings != null ? ' ($servings servings)' : ''}',
+                    value: _formatCost(totalCost),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              if (ingredients.isNotEmpty)
+                Text(
+                  'Cost breakdown',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ...ingredients.map(
+                (item) => _IngredientCostBar(
+                  name: item.name,
+                  amount: item.amount,
+                  price: item.price,
+                  share: totalCost != null && totalCost > 0
+                      ? ((item.price / totalCost).clamp(0.0, 1.0)).toDouble()
+                      : 0.0,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 24),
+    ];
+  }
+
+  Widget _buildSectionTitle(IconData icon, String title) {
+    return Row(
+      children: [
+        Icon(icon, color: Theme.of(context).colorScheme.primary),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
+      ],
+    );
+  }
+
+  List<_MacroData> _extractMacros(Map<String, dynamic> data) {
+    final pairs = <String, dynamic>{
+      'Calories': data['calories'],
+      'Protein': data['protein'],
+      'Carbs': data['carbs'],
+      'Fat': data['fat'],
+    };
+    final colors = {
+      'Calories': Colors.deepOrange,
+      'Protein': Colors.lightBlue,
+      'Carbs': Colors.lightGreen,
+      'Fat': Colors.pinkAccent,
+    };
+
+    final macros = <_MacroData>[];
+    pairs.forEach((label, raw) {
+      final parts = _amountParts(raw);
+      if (parts == null || parts.value <= 0) return;
+      macros.add(
+        _MacroData(
+          label: label,
+          value: parts.value,
+          unit: parts.unit.isEmpty && label == 'Calories' ? 'kcal' : parts.unit,
+          color: colors[label] ?? Theme.of(context).colorScheme.primary,
+        ),
+      );
+    });
+
+    return macros;
+  }
+
+  List<_DailyNeedItem> _topDailyNeeds(dynamic source) {
+    if (source is! List) return <_DailyNeedItem>[];
+    final items = <_DailyNeedItem>[];
+    for (final entry in source) {
+      if (entry is! Map<String, dynamic>) continue;
+      final percent = _asDouble(entry['percentOfDailyNeeds']);
+      if (percent == null || percent <= 0) continue;
+      final title = entry['title']?.toString();
+      if (title == null || title.isEmpty) continue;
+      final amount = entry['amount']?.toString() ?? '';
+      items.add(_DailyNeedItem(title: title, amount: amount, percent: percent));
+    }
+    items.sort((a, b) => b.percent.compareTo(a.percent));
+    return items.take(3).toList();
+  }
+
+  List<_CostIngredient> _extractCostIngredients(Map<String, dynamic> data) {
+    final rawIngredients = data['ingredients'];
+    if (rawIngredients is! List) return <_CostIngredient>[];
+    final results = <_CostIngredient>[];
+    for (final entry in rawIngredients) {
+      if (entry is! Map<String, dynamic>) continue;
+      final name = entry['name']?.toString();
+      if (name == null || name.isEmpty) continue;
+      final price = _asDouble(entry['price']);
+      if (price == null || price <= 0) continue;
+      final amount = _formatIngredientAmount(entry['amount']);
+      results.add(_CostIngredient(name: name, price: price, amount: amount));
+    }
+    results.sort((a, b) => b.price.compareTo(a.price));
+    return results.take(5).toList();
+  }
+
+  _AmountParts? _amountParts(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is num) {
+      return _AmountParts(raw.toDouble(), '');
+    }
+    if (raw is String) {
+      final match = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(raw);
+      if (match != null) {
+        final value = double.tryParse(match.group(1)!);
+        if (value == null) return null;
+        final unit = raw.replaceFirst(match.group(0)!, '').trim();
+        return _AmountParts(value, unit);
+      }
+    }
+    return null;
+  }
+
+  double? _asDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
+  }
+
+  int? _asInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
+  }
+
+  String _formatCost(double? cents) {
+    if (cents == null) return 'N/A';
+    final dollars = cents / 100;
+    return '\$${dollars.toStringAsFixed(2)}';
+  }
+
+  String? _formatIngredientAmount(dynamic raw) {
+    if (raw is Map<String, dynamic>) {
+      final metric = raw['metric'];
+      if (metric is Map<String, dynamic>) {
+        final value = _asDouble(metric['value']);
+        final unit = metric['unit']?.toString() ?? '';
+        if (value != null) {
+          final valueStr = value % 1 == 0
+              ? value.toStringAsFixed(0)
+              : value.toStringAsFixed(1);
+          return unit.isEmpty ? valueStr : '$valueStr $unit';
+        }
+      }
+    }
+    return null;
   }
 
   void _openAiOverlay() {
@@ -382,10 +1116,11 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                     } catch (e) {
                       _aiSummary = 'Error: $e';
                     }
-                    if (mounted)
+                    if (mounted) {
                       sheetSetState(() {
                         _loadingSummary = false;
                       });
+                    }
                   },
             icon: const Icon(Icons.summarize),
             label: Text(
@@ -429,10 +1164,11 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                     } catch (e) {
                       _aiSubs = 'Error: $e';
                     }
-                    if (mounted)
+                    if (mounted) {
                       sheetSetState(() {
                         _loadingSubs = false;
                       });
+                    }
                   },
             icon: const Icon(Icons.sync_alt),
             label: Text(
@@ -490,10 +1226,11 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                   } catch (e) {
                     _answer = 'Error: $e';
                   }
-                  if (mounted)
+                  if (mounted) {
                     sheetSetState(() {
                       _asking = false;
                     });
+                  }
                 },
           icon: const Icon(Icons.send),
           label: Text(_asking ? 'Asking...' : 'Send'),
