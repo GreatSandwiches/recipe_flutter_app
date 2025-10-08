@@ -146,6 +146,40 @@ class SpoonacularService {
     }
   }
 
+  static Future<Map<String, dynamic>> getRecipeNutritionWidget(
+    int recipeId,
+  ) async {
+    final key = _requireApiKey();
+    final url = Uri.parse(
+      '$_baseUrl/recipes/$recipeId/nutritionWidget.json',
+    ).replace(queryParameters: {'apiKey': key});
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      throw _httpError('get recipe nutrition widget', response);
+    }
+  }
+
+  static Future<Map<String, dynamic>> getRecipeCostBreakdown(
+    int recipeId,
+  ) async {
+    final key = _requireApiKey();
+    final url = Uri.parse(
+      '$_baseUrl/recipes/$recipeId/priceBreakdownWidget.json',
+    ).replace(queryParameters: {'apiKey': key});
+
+    final response = await http.get(url);
+
+    if (response.statusCode == 200) {
+      return json.decode(response.body) as Map<String, dynamic>;
+    } else {
+      throw _httpError('get recipe cost breakdown', response);
+    }
+  }
+
   // Search recipes by query
   static Future<List<Map<String, dynamic>>> searchRecipes(String query) async {
     final response = await complexSearch(
