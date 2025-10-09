@@ -194,6 +194,133 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
+  Future<void> _searchRecipes() async {
+    final ingProvider = context.read<IngredientsProvider>();
+    final ingredients = List<String>.from(ingProvider.ingredients);
+    final keyword = _keywordController.text.trim();
+    if (ingredients.isEmpty && keyword.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _smartHighlights = const <String>[];
+        _smartQueryDisplay = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add ingredients or a keyword to search.'),
+        ),
+      );
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+      _recipes = [];
+      _lastResponse = null;
+      _smartHighlights = const <String>[];
+      _smartQueryDisplay = null;
+    });
+    try {
+      final options = _filters.copyWith(
+        includeIngredients: ingredients,
+        offset: 0,
+      );
+
+      SmartSearchResult? smartResult;
+      RecipeSearchOptions effectiveOptions = options;
+      if (keyword.isNotEmpty) {
+        smartResult = SmartSearchParser.parse(keyword);
+        effectiveOptions = smartResult.applyTo(options);
+      }
+
+      final response = await SpoonacularService.smartSearchRecipes(
+        keyword,
+        baseOptions: options,
+        includeIngredients: ingredients,
+        parsedResult: smartResult,
+      );
+      final recipes = response.results;
+      final highlights = _deriveSmartHighlights(
+        baseOptions: options,
+        appliedOptions: effectiveOptions,
+      );
+      final queryDisplay = _resolveSmartQueryDisplay(keyword, smartResult);
+      if (!mounted) return;
+      setState(() {
+        _recipes = recipes;
+        _isLoading = false;
+        _lastResponse = response;
+        _smartHighlights = highlights;
+        _smartQueryDisplay = queryDisplay;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _smartHighlights = const <String>[];
+        _smartQueryDisplay = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to search recipes: $e')),
+      );
+    }
+  }
+
+  void _removeIngredient(String ing) async {
+    final provider = context.read<IngredientsProvider>();
+    await provider.remove(ing);
+    if (!mounted) return;
+    if (provider.ingredients.isNotEmpty) {
+      _searchRecipes();
+    } else {
+      setState(() {
+        _recipes = [];
+        _smartHighlights = const <String>[];
+        _smartQueryDisplay = null;
+      });
+    }
+  }
+
+  Future<void> _openFilters() async {
+    final result = await showRecipeFilterSheet(
+      context: context,
+      initialOptions: _filters,
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _filters = normaliseRecipeSearchOptions(result);
+      });
+      await _searchRecipes();
+    }
+  }
+
+  List<Widget> _buildActiveFilters() {
+    return buildActiveFilterChips(
+      filters: _filters,
+      onFiltersChanged: (next) {
+        setState(() {
+          _filters = normaliseRecipeSearchOptions(next);
+        });
+      },
+    );
+  }
+
+  List<Widget> _buildRecipeFacts(Map<String, dynamic> recipe) {
+    final facts = <Widget>[];
+    TextStyle style = const TextStyle(fontSize: 12, color: Colors.grey);
+    void addFact(String label, dynamic value, {String? suffix}) {
+      if (value == null || (value is String && value.trim().isEmpty)) return;
+      facts.add(Text('$label: $value${suffix ?? ''}', style: style));
+    }
+
+    addFact('Ready in', recipe['readyInMinutes'], suffix: ' min');
+    addFact('Servings', recipe['servings']);
+    addFact('Health score', recipe['healthScore']);
+    if (recipe['vegan'] == true) facts.add(Text('Vegan', style: style));
+    if (recipe['vegetarian'] == true) facts.add(Text('Vegetarian', style: style));
+    if (recipe['glutenFree'] == true) facts.add(Text('Gluten free', style: style));
+    return facts;
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
