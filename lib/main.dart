@@ -141,6 +141,14 @@ class _MainAppState extends State<MainApp> {
       theme: buildAppTheme(dark: false),
       darkTheme: buildAppTheme(dark: true),
       themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
+      // Global tap-to-dismiss keyboard for better touchscreen usability
+      builder: (context, child) {
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: child,
+        );
+      },
       routes: {
         '/settings': (_) => const SettingsScreen(),
         '/login': (_) => const LoginScreen(),

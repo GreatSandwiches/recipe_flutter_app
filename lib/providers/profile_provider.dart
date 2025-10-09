@@ -145,7 +145,20 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
     await _persist();
     if (_currentUserId != null) {
-      await _pushRemote(); // await to reduce race with navigation
+      // Try to push to remote, but don't hang the UI indefinitely.
+      _remoteSyncing = true;
+      _lastRemoteError = null;
+      notifyListeners();
+      try {
+        await _pushRemote().timeout(const Duration(seconds: 8));
+      } on TimeoutException {
+        _lastRemoteError = 'Timed out syncing profile to server. Will retry in background.';
+      } catch (e) {
+        _lastRemoteError = e.toString();
+      } finally {
+        _remoteSyncing = false;
+        notifyListeners();
+      }
     }
   }
 

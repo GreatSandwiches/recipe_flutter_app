@@ -83,7 +83,14 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     );
     if (!mounted) return;
     setState(() { _saving = false; });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile set up')));
+    final err = context.read<ProfileProvider>().lastRemoteError;
+    if (err != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Profile saved locally. Sync pending: $err')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile set up')));
+    }
   // Avoid popping the root (which would show a black screen). If we can't pop,
   // rely on MainApp rebuilding to the main UI because profile.isCompleted == true.
   await Navigator.of(context).maybePop();
@@ -98,6 +105,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       ),
       body: Center(
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
@@ -106,6 +114,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  if (context.watch<ProfileProvider>().remoteSyncing) ...[
+                    const LinearProgressIndicator(minHeight: 3),
+                    const SizedBox(height: 12),
+                  ],
                   const Icon(Icons.person_outline, size: 72),
                   const SizedBox(height: 12),
                   Text('Finish setting up your profile', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600)),
@@ -174,6 +186,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                     onPressed: _saving ? null : () { Navigator.of(context).maybePop(); },
                     child: const Text('Skip for now'),
                   ),
+                  // Add safe space at bottom so buttons aren't hidden under the keyboard
+                  SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
                 ],
               ),
             ),
