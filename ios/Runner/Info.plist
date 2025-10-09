@@ -45,5 +45,16 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+    
+	<!-- Required for Flutter/Dart VM service discovery over Bonjour/mDNS on iOS 14+ -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>This app uses the local network to connect the Flutter/Dart debugger during development.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<!-- Historically used service name -->
+		<string>_dartobservatory._tcp</string>
+		<!-- Current VM service name used by newer Flutter/Dart versions -->
+		<string>_dartvmservice._tcp</string>
+	</array>
 </dict>
 </plist>
