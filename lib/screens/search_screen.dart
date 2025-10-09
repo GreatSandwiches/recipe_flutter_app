@@ -335,115 +335,128 @@ class _SearchScreenState extends State<SearchScreen> {
       appBar: AppBar(title: const Text('Recipe Search')),
       body: Column(
         children: [
-          if (ingProvider.ingredients.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24.0),
-              child: Text(
-                'No ingredients yet. Add some or try a keyword search below.',
-                textAlign: TextAlign.center,
-              ),
-            )
-          else
-            SizedBox(
-              height: 74,
-              child: ListView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-                scrollDirection: Axis.horizontal,
+          // Scrollable header area so keyboard never causes overflow
+          Flexible(
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: EdgeInsets.only(bottom: 12 + MediaQuery.of(context).viewInsets.bottom),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  for (final ing in ingProvider.ingredients)
+                  if (ingProvider.ingredients.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.all(24.0),
+                      child: Text(
+                        'No ingredients yet. Add some or try a keyword search below.',
+                        textAlign: TextAlign.center,
+                      ),
+                    )
+                  else
+                    SizedBox(
+                      height: 74,
+                      child: ListView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          for (final ing in ingProvider.ingredients)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: InputChip(
+                                label: Text(ing),
+                                onDeleted: () => _removeIngredient(ing),
+                                deleteIcon: const Icon(Icons.close, size: 18),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: TextField(
+                      controller: _keywordController,
+                      textInputAction: TextInputAction.search,
+                      onSubmitted: (_) => _searchRecipes(),
+                      decoration: const InputDecoration(
+                        labelText: 'Add a keyword (e.g. pasta, tacos, curry)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            readOnly: true,
+                            maxLines: 2,
+                            decoration: const InputDecoration(
+                              labelText: 'Ingredients used',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        OutlinedButton.icon(
+                          onPressed: _isLoading ? null : _openFilters,
+                          icon: const Icon(Icons.filter_alt_outlined),
+                          label: const Text('Filters'),
+                        ),
+                        const SizedBox(width: 12),
+                        FilledButton.icon(
+                          onPressed: _isLoading ? null : _searchRecipes,
+                          icon: const Icon(Icons.search),
+                          label: const Text('Search'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_filters.hasNonIngredientFilters ||
+                      _filters.excludeIngredients.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: InputChip(
-                        label: Text(ing),
-                        onDeleted: () => _removeIngredient(ing),
-                        deleteIcon: const Icon(Icons.close, size: 18),
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Wrap(children: _buildActiveFilters()),
+                      ),
+                    ),
+                  if ((_smartQueryDisplay != null && _smartQueryDisplay!.isNotEmpty) ||
+                      _smartHighlights.isNotEmpty)
+                    _buildSmartSummarySection(context),
+                  if (_lastResponse != null)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Found ${_lastResponse!.totalResults} recipes',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          if (_filters.number != _lastResponse!.number &&
+                              _lastResponse!.results.length <
+                                  _lastResponse!.totalResults)
+                            Text(
+                              'Showing ${_lastResponse!.results.length} of ${_lastResponse!.totalResults}',
+                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            )
+                          else
+                            Text(
+                              'Showing ${_lastResponse!.results.length}',
+                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                        ],
                       ),
                     ),
                 ],
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: TextField(
-              controller: _keywordController,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => _searchRecipes(),
-              decoration: const InputDecoration(
-                labelText: 'Add a keyword (e.g. pasta, tacos, curry)',
-                border: OutlineInputBorder(),
-              ),
-            ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    readOnly: true,
-                    maxLines: 2,
-                    decoration: const InputDecoration(
-                      labelText: 'Ingredients used',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _openFilters,
-                  icon: const Icon(Icons.filter_alt_outlined),
-                  label: const Text('Filters'),
-                ),
-                const SizedBox(width: 12),
-                FilledButton.icon(
-                  onPressed: _isLoading ? null : _searchRecipes,
-                  icon: const Icon(Icons.search),
-                  label: const Text('Search'),
-                ),
-              ],
-            ),
-          ),
-          if (_filters.hasNonIngredientFilters ||
-              _filters.excludeIngredients.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Wrap(children: _buildActiveFilters()),
-              ),
-            ),
-          if ((_smartQueryDisplay != null && _smartQueryDisplay!.isNotEmpty) ||
-              _smartHighlights.isNotEmpty)
-            _buildSmartSummarySection(context),
-          if (_lastResponse != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Found ${_lastResponse!.totalResults} recipes',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                  if (_filters.number != _lastResponse!.number &&
-                      _lastResponse!.results.length <
-                          _lastResponse!.totalResults)
-                    Text(
-                      'Showing ${_lastResponse!.results.length} of ${_lastResponse!.totalResults}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    )
-                  else
-                    Text(
-                      'Showing ${_lastResponse!.results.length}',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                ],
-              ),
-            ),
+          // Results area
           if (_isLoading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_recipes.isNotEmpty)
@@ -516,8 +529,6 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
               ),
             ),
-          // Keep bottom controls visible above the keyboard
-          SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
         ],
       ),
       resizeToAvoidBottomInset: true,
