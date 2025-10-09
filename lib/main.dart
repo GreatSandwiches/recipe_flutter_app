@@ -104,7 +104,9 @@ class _MainAppState extends State<MainApp> {
     if (!auth.isLoggedIn) {
       homeWidget = const LoginScreen();
     } else if (profile.userId != currentUserId || !profile.isLoaded) {
-      homeWidget = const Scaffold(body: Center(child: CircularProgressIndicator()));
+      homeWidget = const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     } else if (!profile.isCompleted) {
       homeWidget = const ProfileSetupScreen();
     } else {
@@ -112,14 +114,24 @@ class _MainAppState extends State<MainApp> {
         body: _screens[_currentIndex],
         bottomNavigationBar: BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
-            currentIndex: _currentIndex,
-            onTap: (index) { setState(() { _currentIndex = index; }); },
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-              BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favourites'),
-              BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'),
-              BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-            ],
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.favorite),
+              label: 'Favourites',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.explore),
+              label: 'Explore',
+            ),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          ],
         ),
       );
     }
