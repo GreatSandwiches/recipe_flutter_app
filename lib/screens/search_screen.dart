@@ -5,6 +5,7 @@ import '../models/recipe_search_options.dart';
 import '../providers/ingredients_provider.dart';
 import '../services/spoonacular_service.dart';
 import '../utils/recipe_filter_utils.dart';
+import '../utils/smart_search_parser.dart';
 import '../widgets/recipe_filter_sheet.dart';
 import 'recipe_details_screen.dart';
 
@@ -25,6 +26,8 @@ class _SearchScreenState extends State<SearchScreen> {
   List<Map<String, dynamic>> _recipes = [];
   RecipeSearchResponse? _lastResponse;
   late RecipeSearchOptions _filters;
+  List<String> _smartHighlights = const <String>[];
+  String? _smartQueryDisplay;
 
   @override
   void initState() {
@@ -34,6 +37,13 @@ class _SearchScreenState extends State<SearchScreen> {
     );
     if (widget.initialKeyword != null && widget.initialKeyword!.isNotEmpty) {
       _keywordController.text = widget.initialKeyword!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final ingProvider = context.read<IngredientsProvider>();
+        if (ingProvider.ingredients.isEmpty) {
+          _searchRecipes();
+        }
+      });
     }
   }
 
@@ -68,6 +78,11 @@ class _SearchScreenState extends State<SearchScreen> {
     final ingredients = List<String>.from(ingProvider.ingredients);
     final keyword = _keywordController.text.trim();
     if (ingredients.isEmpty && keyword.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _smartHighlights = const <String>[];
+        _smartQueryDisplay = null;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Add ingredients or a keyword to search.'),
@@ -79,35 +94,48 @@ class _SearchScreenState extends State<SearchScreen> {
       _isLoading = true;
       _recipes = [];
       _lastResponse = null;
+      _smartHighlights = const <String>[];
+      _smartQueryDisplay = null;
     });
     try {
       final options = _filters.copyWith(
         includeIngredients: ingredients,
-        query: keyword.isEmpty ? null : keyword,
         offset: 0,
       );
 
-      late RecipeSearchResponse response;
-
-      if (ingredients.isNotEmpty) {
-        response = await SpoonacularService.searchRecipesByIngredients(
-          ingredients,
-          options: options,
-        );
-      } else {
-        response = await SpoonacularService.complexSearch(options);
+      SmartSearchResult? smartResult;
+      RecipeSearchOptions effectiveOptions = options;
+      if (keyword.isNotEmpty) {
+        smartResult = SmartSearchParser.parse(keyword);
+        effectiveOptions = smartResult.applyTo(options);
       }
+
+      final response = await SpoonacularService.smartSearchRecipes(
+        keyword,
+        baseOptions: options,
+        includeIngredients: ingredients,
+        parsedResult: smartResult,
+      );
       final recipes = response.results;
+      final highlights = _deriveSmartHighlights(
+        baseOptions: options,
+        appliedOptions: effectiveOptions,
+      );
+      final queryDisplay = _resolveSmartQueryDisplay(keyword, smartResult);
       if (!mounted) return;
       setState(() {
         _recipes = recipes;
         _isLoading = false;
         _lastResponse = response;
+        _smartHighlights = highlights;
+        _smartQueryDisplay = queryDisplay;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
+        _smartHighlights = const <String>[];
+        _smartQueryDisplay = null;
       });
       ScaffoldMessenger.of(
         context,
@@ -124,6 +152,8 @@ class _SearchScreenState extends State<SearchScreen> {
     } else {
       setState(() {
         _recipes = [];
+        _smartHighlights = const <String>[];
+        _smartQueryDisplay = null;
       });
     }
   }
@@ -180,6 +210,175 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     return facts;
+  }
+
+  String? _resolveSmartQueryDisplay(
+    String original,
+    SmartSearchResult? result,
+  ) {
+    if (result == null) return null;
+    final cleaned = result.cleanedQuery.trim();
+    if (cleaned.isEmpty) return null;
+    final base = original.trim();
+    if (base.isEmpty) return cleaned;
+    return cleaned.toLowerCase() == base.toLowerCase() ? null : cleaned;
+  }
+
+  List<String> _deriveSmartHighlights({
+    required RecipeSearchOptions baseOptions,
+    required RecipeSearchOptions appliedOptions,
+  }) {
+    final highlights = <String>[];
+
+    void addLabel(String? label) {
+      if (label == null) return;
+      if (label.trim().isEmpty) return;
+      highlights.add(label);
+    }
+
+    for (final diet in _diffList(baseOptions.diets, appliedOptions.diets)) {
+      addLabel('Diet: ${_formatSmartTitle(diet)}');
+    }
+
+    for (final intolerance in _diffList(
+      baseOptions.intolerances,
+      appliedOptions.intolerances,
+    )) {
+      addLabel('No ${_formatSmartTitle(intolerance)}');
+    }
+
+    for (final type in _diffList(
+      baseOptions.mealTypes,
+      appliedOptions.mealTypes,
+    )) {
+      addLabel('Type: ${_formatSmartTitle(type)}');
+    }
+
+    for (final cuisine in _diffList(
+      baseOptions.cuisines,
+      appliedOptions.cuisines,
+    )) {
+      addLabel('Cuisine: ${_formatSmartTitle(cuisine)}');
+    }
+
+    for (final equipment in _diffList(
+      baseOptions.equipment,
+      appliedOptions.equipment,
+    )) {
+      addLabel('Equipment: ${_formatSmartTitle(equipment)}');
+    }
+
+    if (appliedOptions.maxReadyTime != null &&
+        appliedOptions.maxReadyTime != baseOptions.maxReadyTime) {
+      addLabel('<= ${appliedOptions.maxReadyTime} min');
+    }
+
+    appliedOptions.numericFilters.forEach((key, value) {
+      final baseValue = baseOptions.numericFilters[key];
+      final shouldHighlight =
+          baseValue == null ||
+          (_isMaxKey(key) && value < baseValue) ||
+          (_isMinKey(key) && value > baseValue);
+      if (shouldHighlight) {
+        addLabel(_formatNumericHighlight(key, value));
+      }
+    });
+
+    final baseSort = baseOptions.sort;
+    final appliedSort = appliedOptions.sort;
+    if (appliedSort != null &&
+        appliedSort.isNotEmpty &&
+        appliedSort != baseSort) {
+      final sortLabel =
+          kRecipeSortOptions[appliedSort] ?? _formatSmartTitle(appliedSort);
+      addLabel('Sort: $sortLabel');
+    }
+
+    return highlights;
+  }
+
+  Iterable<String> _diffList(List<String> base, List<String> applied) {
+    if (applied.isEmpty) return const <String>[];
+    final Set<String> baseSet = base
+        .map((value) => value.toLowerCase().trim())
+        .toSet();
+    return applied.where(
+      (value) => !baseSet.contains(value.toLowerCase().trim()),
+    );
+  }
+
+  String _formatSmartTitle(String value) {
+    return value
+        .split(' ')
+        .where((part) => part.isNotEmpty)
+        .map(
+          (part) =>
+              '${part[0].toUpperCase()}${part.substring(1).toLowerCase()}',
+        )
+        .join(' ');
+  }
+
+  String? _formatNumericHighlight(String key, num value) {
+    final rounded = value.round();
+    switch (key.toLowerCase()) {
+      case 'maxcalories':
+        return '<= $rounded kcal';
+      case 'minprotein':
+        return 'Protein >= $rounded g';
+      case 'maxcarbs':
+        return 'Carbs <= $rounded g';
+      case 'maxsugar':
+        return 'Sugar <= $rounded g';
+      case 'maxsodium':
+        return 'Sodium <= $rounded mg';
+      case 'minfiber':
+        return 'Fiber >= $rounded g';
+      case 'maxfat':
+        return 'Fat <= $rounded g';
+      default:
+        return null;
+    }
+  }
+
+  bool _isMaxKey(String key) => key.toLowerCase().startsWith('max');
+
+  bool _isMinKey(String key) => key.toLowerCase().startsWith('min');
+
+  Widget _buildSmartSummarySection(BuildContext context) {
+    final query = _smartQueryDisplay;
+    final highlights = _smartHighlights;
+    if ((query == null || query.isEmpty) && highlights.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (query != null && query.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                'Showing results for "$query"',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontStyle: FontStyle.italic,
+                  color: theme.colorScheme.secondary,
+                ),
+              ),
+            ),
+          if (highlights.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final label in highlights) Chip(label: Text(label)),
+              ],
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -277,6 +476,9 @@ class _SearchScreenState extends State<SearchScreen> {
                 child: Wrap(children: _buildActiveFilters()),
               ),
             ),
+          if ((_smartQueryDisplay != null && _smartQueryDisplay!.isNotEmpty) ||
+              _smartHighlights.isNotEmpty)
+            _buildSmartSummarySection(context),
           if (_lastResponse != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
