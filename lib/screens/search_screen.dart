@@ -576,8 +576,11 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
               ),
             ),
+          // Keep bottom controls visible above the keyboard
+          SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
         ],
       ),
+      resizeToAvoidBottomInset: true,
     );
   }
 }

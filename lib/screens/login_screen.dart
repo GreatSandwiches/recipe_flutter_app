@@ -59,6 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(title: const Text('Login')),
       body: Center(
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
@@ -111,6 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: _loading ? null : () => setState(() { _isSignUp = !_isSignUp; }),
                     child: Text(_isSignUp ? 'Have an account? Login' : 'Need an account? Sign Up'),
                   ),
+                  SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
                 ],
               ),
             ),
