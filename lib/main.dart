@@ -25,12 +25,12 @@ Future<void> main() async {
   final supabaseUrl = dotenv.env['SUPABASE_URL'];
   final supabaseAnon = dotenv.env['SUPABASE_ANON_KEY'];
   if (supabaseUrl == null || supabaseAnon == null) {
-    dev.log('Supabase env vars missing (SUPABASE_URL / SUPABASE_ANON_KEY). Auth will fail.', name: 'bootstrap');
-  } else {
-    await sb.Supabase.initialize(
-      url: supabaseUrl,
-      anonKey: supabaseAnon,
+    dev.log(
+      'Supabase env vars missing (SUPABASE_URL / SUPABASE_ANON_KEY). Auth will fail.',
+      name: 'bootstrap',
     );
+  } else {
+    await sb.Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnon);
   }
   runApp(
     MultiProvider(
