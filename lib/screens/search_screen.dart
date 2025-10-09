@@ -28,6 +28,50 @@ class _SearchScreenState extends State<SearchScreen> {
   late RecipeSearchOptions _filters;
   List<String> _smartHighlights = const <String>[];
   String? _smartQueryDisplay;
+
+  @override
+  void initState() {
+    super.initState();
+    _filters = normaliseRecipeSearchOptions(
+      widget.initialFilters ?? kDefaultRecipeFilters,
+    );
+    if (widget.initialKeyword != null && widget.initialKeyword!.isNotEmpty) {
+      _keywordController.text = widget.initialKeyword!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final ingProvider = context.read<IngredientsProvider>();
+        if (ingProvider.ingredients.isEmpty) {
+          _searchRecipes();
+        }
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant SearchScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialFilters != oldWidget.initialFilters &&
+        widget.initialFilters != null) {
+      _filters = normaliseRecipeSearchOptions(widget.initialFilters!);
+    }
+    if (widget.initialKeyword != oldWidget.initialKeyword &&
+        widget.initialKeyword != null) {
+      _keywordController.text = widget.initialKeyword!;
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final ingProvider = context.watch<IngredientsProvider>();
+    final text = ingProvider.ingredients.join(', ');
+    if (_searchController.text != text) {
+      _searchController.text = text;
+      if (ingProvider.ingredients.isNotEmpty) {
+        _searchRecipes();
+      }
+    }
+  }
   String? _resolveSmartQueryDisplay(String original, SmartSearchResult? result) {
     if (result == null) return null;
     final cleaned = result.cleanedQuery.trim();
