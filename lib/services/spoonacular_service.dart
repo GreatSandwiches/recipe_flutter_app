@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../models/recipe_search_options.dart';
+import '../utils/smart_search_parser.dart';
 
 class SpoonacularService {
   static const String _baseUrl = 'https://api.spoonacular.com';
@@ -182,9 +183,9 @@ class SpoonacularService {
 
   // Search recipes by query
   static Future<List<Map<String, dynamic>>> searchRecipes(String query) async {
-    final response = await complexSearch(
-      RecipeSearchOptions(
-        query: query,
+    final response = await smartSearchRecipes(
+      query,
+      baseOptions: const RecipeSearchOptions(
         addRecipeInformation: true,
         fillIngredients: true,
         instructionsRequired: true,
@@ -192,6 +193,27 @@ class SpoonacularService {
       ),
     );
     return response.results;
+  }
+
+  static Future<RecipeSearchResponse> smartSearchRecipes(
+    String keyword, {
+    RecipeSearchOptions? baseOptions,
+    List<String>? includeIngredients,
+    SmartSearchResult? parsedResult,
+  }) async {
+    final base = baseOptions ?? const RecipeSearchOptions();
+    final parsed = parsedResult ?? SmartSearchParser.parse(keyword);
+    var request = parsed.applyTo(base);
+
+    if (includeIngredients != null) {
+      request = request.copyWith(includeIngredients: includeIngredients);
+    }
+
+    if (includeIngredients != null && includeIngredients.isNotEmpty) {
+      return searchRecipesByIngredients(includeIngredients, options: request);
+    }
+
+    return complexSearch(request);
   }
 
   // Get random recipes

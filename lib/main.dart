@@ -25,12 +25,12 @@ Future<void> main() async {
   final supabaseUrl = dotenv.env['SUPABASE_URL'];
   final supabaseAnon = dotenv.env['SUPABASE_ANON_KEY'];
   if (supabaseUrl == null || supabaseAnon == null) {
-    dev.log('Supabase env vars missing (SUPABASE_URL / SUPABASE_ANON_KEY). Auth will fail.', name: 'bootstrap');
-  } else {
-    await sb.Supabase.initialize(
-      url: supabaseUrl,
-      anonKey: supabaseAnon,
+    dev.log(
+      'Supabase env vars missing (SUPABASE_URL / SUPABASE_ANON_KEY). Auth will fail.',
+      name: 'bootstrap',
     );
+  } else {
+    await sb.Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnon);
   }
   runApp(
     MultiProvider(
@@ -104,7 +104,9 @@ class _MainAppState extends State<MainApp> {
     if (!auth.isLoggedIn) {
       homeWidget = const LoginScreen();
     } else if (profile.userId != currentUserId || !profile.isLoaded) {
-      homeWidget = const Scaffold(body: Center(child: CircularProgressIndicator()));
+      homeWidget = const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     } else if (!profile.isCompleted) {
       homeWidget = const ProfileSetupScreen();
     } else {
@@ -112,14 +114,24 @@ class _MainAppState extends State<MainApp> {
         body: _screens[_currentIndex],
         bottomNavigationBar: BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
-            currentIndex: _currentIndex,
-            onTap: (index) { setState(() { _currentIndex = index; }); },
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-              BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Favourites'),
-              BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'),
-              BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
-            ],
+          currentIndex: _currentIndex,
+          onTap: (index) {
+            setState(() {
+              _currentIndex = index;
+            });
+          },
+          items: const [
+            BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.favorite),
+              label: 'Favourites',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.explore),
+              label: 'Explore',
+            ),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          ],
         ),
       );
     }
@@ -129,6 +141,14 @@ class _MainAppState extends State<MainApp> {
       theme: buildAppTheme(dark: false),
       darkTheme: buildAppTheme(dark: true),
       themeMode: darkMode ? ThemeMode.dark : ThemeMode.light,
+      // Global tap-to-dismiss keyboard for better touchscreen usability
+      builder: (context, child) {
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+          child: child,
+        );
+      },
       routes: {
         '/settings': (_) => const SettingsScreen(),
         '/login': (_) => const LoginScreen(),
