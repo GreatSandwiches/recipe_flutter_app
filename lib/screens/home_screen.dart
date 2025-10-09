@@ -11,6 +11,8 @@ import '../models/recipe_search_options.dart';
 import '../utils/recipe_filter_utils.dart';
 import '../widgets/recipe_filter_sheet.dart';
 
+enum _InputMode { ingredients, keyword }
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -25,6 +27,9 @@ class _HomeScreenState extends State<HomeScreen> {
   List<String> _suggestions = [];
   int _highlightIndex = -1;
   late RecipeSearchOptions _filters;
+  _InputMode _inputMode = _InputMode.ingredients;
+
+  bool get _isKeywordMode => _inputMode == _InputMode.keyword;
 
   @override
   void initState() {
@@ -40,6 +45,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _updateSuggestions(IngredientsProvider provider) {
+    if (_isKeywordMode) {
+      _suggestions = [];
+      _highlightIndex = -1;
+      return;
+    }
     final raw = _controller.text.trim();
     if (raw.isEmpty) {
       _suggestions = provider.suggestions('');
@@ -57,7 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _commitCurrent(IngredientsProvider provider) {
-    _submitInput(provider);
+    _handleSubmit(provider);
   }
 
   void _selectSuggestion(IngredientsProvider provider, String s) {
@@ -68,9 +78,30 @@ class _HomeScreenState extends State<HomeScreen> {
     _commitCurrent(provider);
   }
 
+  Future<void> _handleSubmit(IngredientsProvider provider) async {
+    if (_isKeywordMode) {
+      await _submitKeyword(provider);
+    } else {
+      await _submitInput(provider);
+    }
+  }
+
   bool _handleKey(KeyEvent e, IngredientsProvider provider) {
     if (e is! KeyDownEvent) return false;
     final key = e.logicalKey;
+    if (_isKeywordMode) {
+      if (key == LogicalKeyboardKey.enter ||
+          key == LogicalKeyboardKey.numpadEnter) {
+        _handleSubmit(provider);
+        return true;
+      }
+      if (key == LogicalKeyboardKey.escape && _controller.text.isNotEmpty) {
+        _controller.clear();
+        setState(() {});
+        return true;
+      }
+      return false;
+    }
     if (key == LogicalKeyboardKey.arrowDown) {
       if (_suggestions.isNotEmpty) {
         setState(() {
@@ -122,7 +153,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  void _submitInput(IngredientsProvider provider) async {
+  Future<void> _submitInput(IngredientsProvider provider) async {
     final raw = _controller.text.trim();
     if (raw.isEmpty) return;
     final parts = raw
@@ -146,6 +177,27 @@ class _HomeScreenState extends State<HomeScreen> {
     _updateSuggestions(provider);
     _focusNode.requestFocus();
     setState(() {});
+  }
+
+  Future<void> _submitKeyword(IngredientsProvider provider) async {
+    final query = _controller.text.trim();
+    if (query.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Enter a keyword to search.')),
+      );
+      return;
+    }
+    _controller.clear();
+    _updateSuggestions(provider);
+    if (!mounted) return;
+    FocusScope.of(context).unfocus();
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            SearchScreen(initialKeyword: query, initialFilters: _filters),
+      ),
+    );
   }
 
   void _removeIngredient(
@@ -224,14 +276,24 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = theme.brightness == Brightness.dark;
     _updateSuggestions(provider);
     final rawInput = _controller.text.trim();
-    final preview = rawInput.isEmpty ? null : provider.parsePreview(rawInput);
+    final preview = !_isKeywordMode && rawInput.isNotEmpty
+        ? provider.parsePreview(rawInput)
+        : null;
     final showPreview =
+        !_isKeywordMode &&
         preview != null &&
         preview.name.isNotEmpty &&
         preview.name != rawInput.toLowerCase();
     final surfaceFill = isDark
         ? theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.35)
         : theme.colorScheme.surfaceContainerHighest;
+    final hintText = _isKeywordMode
+        ? 'Search recipes by keyword (press enter to search)'
+        : 'Add ingredient (comma / enter to add, #tag supported)';
+    final prefixIcon = Icon(
+      _isKeywordMode ? Icons.search : Icons.kitchen_outlined,
+      color: theme.colorScheme.primary,
+    );
     return Scaffold(
       appBar: AppBar(
         title: Padding(
@@ -313,18 +375,89 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: ToggleButtons(
+                      isSelected: [
+                        _inputMode == _InputMode.ingredients,
+                        _inputMode == _InputMode.keyword,
+                      ],
+                      onPressed: (index) {
+                        final next = index == 0
+                            ? _InputMode.ingredients
+                            : _InputMode.keyword;
+                        if (next == _inputMode) return;
+                        setState(() {
+                          _inputMode = next;
+                          _highlightIndex = -1;
+                          _controller.clear();
+                          _updateSuggestions(provider);
+                        });
+                        _focusNode.requestFocus();
+                      },
+                      borderRadius: BorderRadius.circular(20),
+                      constraints: const BoxConstraints(
+                        minHeight: 34,
+                        minWidth: 0,
+                      ),
+                      borderWidth: 1.2,
+                      borderColor: theme.colorScheme.outlineVariant,
+                      selectedBorderColor: theme.colorScheme.primary,
+                      fillColor: theme.colorScheme.primary.withValues(
+                        alpha: 0.12,
+                      ),
+                      selectedColor: theme.colorScheme.primary,
+                      color: theme.colorScheme.onSurfaceVariant,
+                      splashColor: theme.colorScheme.primary.withValues(
+                        alpha: 0.18,
+                      ),
+                      highlightColor: theme.colorScheme.primary.withValues(
+                        alpha: 0.1,
+                      ),
+                      textStyle: theme.textTheme.bodyMedium,
+                      children: const [
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.kitchen_outlined, size: 16),
+                              SizedBox(width: 6),
+                              Text('Ingredients'),
+                            ],
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.search, size: 16),
+                              SizedBox(width: 6),
+                              Text('Keywords'),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: _controller,
                     focusNode: _focusNode,
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _submitInput(provider),
+                    textInputAction: _isKeywordMode
+                        ? TextInputAction.search
+                        : TextInputAction.done,
+                    onSubmitted: (_) => _handleSubmit(provider),
                     decoration: InputDecoration(
-                      hintText:
-                          'Add ingredient (comma / enter to add, #tag supported)',
-                      prefixIcon: Icon(
-                        Icons.kitchen_outlined,
-                        color: theme.colorScheme.primary,
-                      ),
+                      hintText: hintText,
+                      prefixIcon: prefixIcon,
                       suffixIcon: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -340,9 +473,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           if (_controller.text.isNotEmpty)
                             IconButton(
-                              icon: const Icon(Icons.send),
-                              tooltip: 'Add',
-                              onPressed: () => _submitInput(provider),
+                              icon: Icon(
+                                _isKeywordMode ? Icons.search : Icons.send,
+                              ),
+                              tooltip: _isKeywordMode ? 'Search' : 'Add',
+                              onPressed: () => _handleSubmit(provider),
                             ),
                         ],
                       ),
@@ -406,7 +541,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                     ),
                   ],
-                  if (_suggestions.isNotEmpty &&
+                  if (!_isKeywordMode &&
+                      _suggestions.isNotEmpty &&
                       _controller.text.trim().isNotEmpty) ...[
                     const SizedBox(height: 6),
                     Material(
