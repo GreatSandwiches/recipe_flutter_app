@@ -223,7 +223,7 @@ class IngredientsProvider extends ChangeNotifier {
       if (raw is Map<String, dynamic>) {
         map = raw;
       } else if (raw is Map) {
-        map = Map<String, dynamic>.from(raw as Map);
+        map = Map<String, dynamic>.from(raw);
       } else if (raw is String) {
         map = Map<String, dynamic>.from(json.decode(raw) as Map);
       }
