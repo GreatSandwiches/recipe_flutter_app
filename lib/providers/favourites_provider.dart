@@ -10,7 +10,12 @@ class FavouriteRecipe {
   final String? image;
   final int? readyInMinutes;
 
-  FavouriteRecipe({required this.id, required this.title, this.image, this.readyInMinutes});
+  FavouriteRecipe({
+    required this.id,
+    required this.title,
+    this.image,
+    this.readyInMinutes,
+  });
 
   Map<String, dynamic> toMap() => {
     'id': id,
@@ -76,7 +81,9 @@ class FavouritesProvider extends ChangeNotifier {
   Future<void> _loadFor({required String? userId}) async {
     final prefs = await SharedPreferences.getInstance();
     final key = _storageKey(userId);
-    final jsonString = prefs.getString(key) ?? (userId == null ? prefs.getString(_prefsKey) : null);
+    final jsonString =
+        prefs.getString(key) ??
+        (userId == null ? prefs.getString(_prefsKey) : null);
     _favourites.clear();
     if (jsonString != null) {
       try {
@@ -114,7 +121,10 @@ class FavouritesProvider extends ChangeNotifier {
   Future<void> _persist() async {
     if (!_loaded) return;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_storageKey(_currentUserId), json.encode(_favourites.values.map((e)=>e.toMap()).toList()));
+    await prefs.setString(
+      _storageKey(_currentUserId),
+      json.encode(_favourites.values.map((e) => e.toMap()).toList()),
+    );
   }
 
   Map<String, dynamic> _mapForRemote(FavouriteRecipe fav) => {
