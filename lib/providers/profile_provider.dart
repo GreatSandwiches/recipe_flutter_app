@@ -27,12 +27,7 @@ class ProfileProvider extends ChangeNotifier {
 
   String _storageKey(String? userId) => '${_baseKey}_${userId ?? 'anon'}';
 
-  static int _encodeColor(Color color) {
-    return (color.alpha << 24) |
-        (color.red << 16) |
-        (color.green << 8) |
-        color.blue;
-  }
+  static int _encodeColor(Color color) => color.toARGB32();
 
   Future<void> load() async {
     // initial load for anon (pre-auth)

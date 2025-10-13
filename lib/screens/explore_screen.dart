@@ -35,7 +35,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       title: '30 Min Meals',
       subtitle: 'Dinner on the table in under half an hour.',
       icon: Icons.timer,
-      options: const RecipeSearchOptions(
+      options: RecipeSearchOptions(
         maxReadyTime: 30,
         sort: 'time',
         sortDirection: 'asc',
@@ -51,7 +51,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       title: 'High Protein',
       subtitle: 'Fuel up with 25g+ of protein per serving.',
       icon: Icons.fitness_center,
-      options: const RecipeSearchOptions(
+      options: RecipeSearchOptions(
         numericFilters: {'minProtein': 25},
         sort: 'protein',
         sortDirection: 'desc',
@@ -68,7 +68,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       title: 'Veggie Comfort',
       subtitle: 'Hearty vegetarian mains everyone will love.',
       icon: Icons.spa,
-      options: const RecipeSearchOptions(
+      options: RecipeSearchOptions(
         diets: ['vegetarian'],
         mealTypes: ['main course'],
         sort: 'popularity',
@@ -85,7 +85,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       title: 'Low Carb',
       subtitle: 'Smart picks with under 25g carbs.',
       icon: Icons.local_fire_department,
-      options: const RecipeSearchOptions(
+      options: RecipeSearchOptions(
         numericFilters: {'maxCarbs': 25, 'maxCalories': 600},
         sort: 'healthiness',
         sortDirection: 'desc',
