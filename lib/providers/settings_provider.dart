@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsProvider extends ChangeNotifier {
   static const _prefsKey = 'settings_v1';
+  static const Set<String> _allowedUnitSystems = {'metric', 'imperial'};
   bool _darkMode = false;
   bool _notifications = true;
   String _units = 'metric';
@@ -61,7 +62,11 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   Future<void> setUnits(String value) async {
-    _units = value;
+    final normalized = value.trim().toLowerCase();
+    if (!_allowedUnitSystems.contains(normalized)) {
+      throw ArgumentError.value(value, 'value', 'Units must be one of $_allowedUnitSystems');
+    }
+    _units = normalized;
     notifyListeners();
     await _persist();
   }
