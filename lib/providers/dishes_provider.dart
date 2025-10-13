@@ -18,16 +18,13 @@ class MadeDish {
     required this.madeAt,
   });
 
-  MadeDish copyWith({
-    String? title,
-    String? image,
-    DateTime? madeAt,
-  }) => MadeDish(
-    recipeId: recipeId,
-    title: title ?? this.title,
-    image: image ?? this.image,
-    madeAt: madeAt ?? this.madeAt,
-  );
+  MadeDish copyWith({String? title, String? image, DateTime? madeAt}) =>
+      MadeDish(
+        recipeId: recipeId,
+        title: title ?? this.title,
+        image: image ?? this.image,
+        madeAt: madeAt ?? this.madeAt,
+      );
 
   Map<String, dynamic> toMap() => {
     'recipeId': recipeId,
