@@ -1,4 +1,3 @@
-import 'dart:collection';
 import 'dart:math' as math;
 
 import '../models/recipe_search_options.dart';
@@ -442,11 +441,11 @@ class _SmartSearchState {
   _SmartSearchState({required this.original});
 
   final String original;
-  final Set<String> diets = LinkedHashSet();
-  final Set<String> intolerances = LinkedHashSet();
-  final Set<String> mealTypes = LinkedHashSet();
-  final Set<String> cuisines = LinkedHashSet();
-  final Set<String> equipment = LinkedHashSet();
+  final Set<String> diets = <String>{};
+  final Set<String> intolerances = <String>{};
+  final Set<String> mealTypes = <String>{};
+  final Set<String> cuisines = <String>{};
+  final Set<String> equipment = <String>{};
   final Map<String, num> numericFilters = <String, num>{};
   int? maxReadyTime;
   String? sort;
@@ -503,7 +502,7 @@ class _SmartSearchState {
 }
 
 List<String> _mergeLists(List<String> base, Iterable<String> additions) {
-  final ordered = LinkedHashSet<String>();
+  final ordered = <String>{};
   for (final item in base) {
     ordered.add(item);
   }
