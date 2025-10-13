@@ -177,7 +177,11 @@ class DishesProvider extends ChangeNotifier {
         for (final raw in list) {
           _dishes.add(MadeDish.fromMap(Map<String, dynamic>.from(raw as Map)));
         }
-      } catch (e) { if (kDebugMode) { print('Dishes load parse error: $e'); } }
+      } catch (e) {
+        if (kDebugMode) {
+          print('Dishes load parse error: $e');
+        }
+      }
     }
     _loaded = true;
     await _persist();
@@ -187,40 +191,58 @@ class DishesProvider extends ChangeNotifier {
   Future<void> _persist() async {
     if (!_loaded) return;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_storageKey(_currentUserId), json.encode(_dishes.map((d)=>d.toMap()).toList()));
+    await prefs.setString(
+      _storageKey(_currentUserId),
+      json.encode(_dishes.map((d) => d.toMap()).toList()),
+    );
   }
 
   SupabaseClient? get _client {
-    try { return Supabase.instance.client; } catch (_) { return null; }
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _pullRemoteMerge() async {
-    final client = _client; if (client == null || _currentUserId == null) { return; }
-    _syncing = true; _lastError = null; notifyListeners();
+    final client = _client;
+    if (client == null || _currentUserId == null) {
+      return;
+    }
+    _syncing = true;
+    _lastError = null;
+    notifyListeners();
     try {
-      final rows = await client.from('dishes_made')
-        .select('recipe_id,title,image,made_at')
-        .eq('user_id', _currentUserId!)
-        .order('made_at', ascending: false);
+      final rows = await client
+          .from('dishes_made')
+          .select('recipe_id,title,image,made_at')
+          .eq('user_id', _currentUserId!)
+          .order('made_at', ascending: false);
       bool changed = false;
       for (final r in rows) {
         final rid = r['recipe_id'] as int;
-        final remoteMadeAt = DateTime.tryParse(r['made_at'] as String? ?? '') ?? DateTime.now();
+        final remoteMadeAt =
+            DateTime.tryParse(r['made_at'] as String? ?? '') ?? DateTime.now();
         final idx = _dishes.indexWhere((d) => d.recipeId == rid);
         if (idx == -1) {
-          _dishes.add(MadeDish(
-            recipeId: rid,
-            title: (r['title'] ?? '') as String,
-            image: r['image'] as String?,
-            madeAt: remoteMadeAt,
-          ));
+          _dishes.add(
+            MadeDish(
+              recipeId: rid,
+              title: (r['title'] ?? '') as String,
+              image: r['image'] as String?,
+              madeAt: remoteMadeAt,
+            ),
+          );
           changed = true;
         } else {
           final existing = _dishes[idx];
           final updated = existing.copyWith(
             title: (r['title'] ?? existing.title) as String,
             image: r['image'] as String? ?? existing.image,
-            madeAt: remoteMadeAt.isAfter(existing.madeAt) ? remoteMadeAt : existing.madeAt,
+            madeAt: remoteMadeAt.isAfter(existing.madeAt)
+                ? remoteMadeAt
+                : existing.madeAt,
           );
           if (updated.madeAt != existing.madeAt ||
               updated.title != existing.title ||
@@ -239,7 +261,10 @@ class DishesProvider extends ChangeNotifier {
       _lastError = e.message;
     } catch (e) {
       _lastError = e.toString();
-    } finally { _syncing = false; notifyListeners(); }
+    } finally {
+      _syncing = false;
+      notifyListeners();
+    }
   }
 
   Map<String, dynamic> _remotePayload(MadeDish dish) => {
@@ -251,7 +276,8 @@ class DishesProvider extends ChangeNotifier {
   };
 
   Future<void> _pushRemoteSingle(int recipeId) async {
-    final client = _client; if (client == null || _currentUserId == null) return;
+    final client = _client;
+    if (client == null || _currentUserId == null) return;
     final dishIndex = _dishes.indexWhere((d) => d.recipeId == recipeId);
     if (dishIndex == -1) {
       return;
@@ -259,19 +285,32 @@ class DishesProvider extends ChangeNotifier {
     final dish = _dishes[dishIndex];
     try {
       await client.from('dishes_made').upsert(_remotePayload(dish));
-    } catch (e) { if (kDebugMode) { print('Push remote single error: $e'); } }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Push remote single error: $e');
+      }
+    }
   }
 
   Future<void> _deleteRemote(int recipeId) async {
-    final client = _client; if (client == null || _currentUserId == null) return;
-    try { await client.from('dishes_made').delete().match({'user_id': _currentUserId, 'recipe_id': recipeId}); } catch (_) {}
+    final client = _client;
+    if (client == null || _currentUserId == null) return;
+    try {
+      await client.from('dishes_made').delete().match({
+        'user_id': _currentUserId,
+        'recipe_id': recipeId,
+      });
+    } catch (_) {}
   }
 
   Future<void> _pushAllRemote() async {
-    final client = _client; if (client == null || _currentUserId == null) return;
+    final client = _client;
+    if (client == null || _currentUserId == null) return;
     if (_dishes.isEmpty) return;
     try {
-      await client.from('dishes_made').upsert(_dishes.map(_remotePayload).toList());
+      await client
+          .from('dishes_made')
+          .upsert(_dishes.map(_remotePayload).toList());
     } catch (e) {
       if (kDebugMode) {
         print('Push remote bulk error: $e');

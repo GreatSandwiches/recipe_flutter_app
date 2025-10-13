@@ -181,7 +181,8 @@ class ProfileProvider extends ChangeNotifier {
       try {
         await _pushRemote().timeout(const Duration(seconds: 8));
       } on TimeoutException {
-        _lastRemoteError = 'Timed out syncing profile to server. Will retry in background.';
+        _lastRemoteError =
+            'Timed out syncing profile to server. Will retry in background.';
       } catch (e) {
         _lastRemoteError = e.toString();
       } finally {
@@ -192,31 +193,53 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   SupabaseClient? get _supabaseClient {
-    try { return Supabase.instance.client; } catch (_) { return null; }
+    try {
+      return Supabase.instance.client;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _fetchRemoteAndMerge(String userId) async {
-    final client = _supabaseClient; if (client == null) return;
-    _remoteSyncing = true; 
+    final client = _supabaseClient;
+    if (client == null) return;
+    _remoteSyncing = true;
     _lastRemoteError = null;
     notifyListeners();
     try {
-      final resp = await client.from('profiles').select('name,bio,avatar_color,completed').eq('id', userId).maybeSingle();
+      final resp = await client
+          .from('profiles')
+          .select('name,bio,avatar_color,completed')
+          .eq('id', userId)
+          .maybeSingle();
       if (resp == null) return;
       bool changed = false;
       final remoteName = (resp['name'] ?? '') as String;
       final remoteBio = (resp['bio'] ?? '') as String;
       final remoteColor = resp['avatar_color'];
       final remoteCompleted = (resp['completed'] ?? false) as bool;
-  // Prefer non-empty values and avoid overwriting local with empty remote
-  if (remoteName.trim().isNotEmpty && remoteName != _name) { _name = remoteName; changed = true; }
-  if (remoteBio != _bio && (remoteBio.trim().isNotEmpty || _bio.trim().isEmpty)) { _bio = remoteBio; changed = true; }
+      // Prefer non-empty values and avoid overwriting local with empty remote
+      if (remoteName.trim().isNotEmpty && remoteName != _name) {
+        _name = remoteName;
+        changed = true;
+      }
+      if (remoteBio != _bio &&
+          (remoteBio.trim().isNotEmpty || _bio.trim().isEmpty)) {
+        _bio = remoteBio;
+        changed = true;
+      }
       if (remoteColor is int) {
         final reconstructed = 0xFF000000 | (remoteColor & 0x00FFFFFF);
-        if (reconstructed != _avatarColor) { _avatarColor = reconstructed; changed = true; }
+        if (reconstructed != _avatarColor) {
+          _avatarColor = reconstructed;
+          changed = true;
+        }
       }
-  // Never downgrade completion from true to false (avoid race with initial insert)
-  if (remoteCompleted && !_completed) { _completed = true; changed = true; }
+      // Never downgrade completion from true to false (avoid race with initial insert)
+      if (remoteCompleted && !_completed) {
+        _completed = true;
+        changed = true;
+      }
       if (changed) {
         await _persist();
         notifyListeners();
@@ -228,13 +251,17 @@ class ProfileProvider extends ChangeNotifier {
       _lastRemoteError = e.toString();
       debugPrint('Fetch merge error: $e');
     } finally {
-      _remoteSyncing = false; notifyListeners();
+      _remoteSyncing = false;
+      notifyListeners();
     }
   }
 
   Future<void> _pushRemote() async {
-    final client = _supabaseClient; if (client == null || _currentUserId == null) return;
-    debugPrint('PUSH REMOTE: Starting for user $_currentUserId, client available');
+    final client = _supabaseClient;
+    if (client == null || _currentUserId == null) return;
+    debugPrint(
+      'PUSH REMOTE: Starting for user $_currentUserId, client available',
+    );
     try {
       final data = {
         'id': _currentUserId,
@@ -248,7 +275,9 @@ class ProfileProvider extends ChangeNotifier {
       debugPrint('PUSH REMOTE: Success, result: $result');
     } on PostgrestException catch (e) {
       _lastRemoteError = e.message;
-      debugPrint('PUSH REMOTE ERROR: PostgrestException - ${e.message}, details: ${e.details}, hint: ${e.hint}');
+      debugPrint(
+        'PUSH REMOTE ERROR: PostgrestException - ${e.message}, details: ${e.details}, hint: ${e.hint}',
+      );
     } catch (e) {
       _lastRemoteError = e.toString();
       debugPrint('PUSH REMOTE ERROR: $e');
@@ -259,7 +288,11 @@ class ProfileProvider extends ChangeNotifier {
     final client = _supabaseClient;
     if (client == null || _currentUserId == null) return null;
     try {
-      final row = await client.from('profiles').select().eq('id', _currentUserId!).maybeSingle();
+      final row = await client
+          .from('profiles')
+          .select()
+          .eq('id', _currentUserId!)
+          .maybeSingle();
       debugPrint('REMOTE PROFILE ROW: $row');
       return row;
     } catch (e) {
