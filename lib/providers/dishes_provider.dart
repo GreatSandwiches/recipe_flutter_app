@@ -65,7 +65,7 @@ class DishesProvider extends ChangeNotifier {
   final List<MadeDish> _dishes = [];
 
   List<MadeDish> get dishes {
-    final sorted = [..._dishes]..sort((a,b)=>b.madeAt.compareTo(a.madeAt));
+    final sorted = [..._dishes]..sort((a, b) => b.madeAt.compareTo(a.madeAt));
     return List.unmodifiable(sorted);
   }
 
