@@ -6,10 +6,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileProvider extends ChangeNotifier {
   static const _baseKey = 'profile_v1';
+  static const Color _defaultAvatarColor = Colors.tealAccent;
   String? _currentUserId; // null for anon
   String _name = '';
   String _bio = '';
-  int _avatarColor = Colors.tealAccent.value;
+  int _avatarColor = _encodeColor(_defaultAvatarColor);
   bool _loaded = false;
   bool _completed = false;
   bool _remoteSyncing = false;
@@ -26,7 +27,15 @@ class ProfileProvider extends ChangeNotifier {
 
   String _storageKey(String? userId) => '${_baseKey}_${userId ?? 'anon'}';
 
-  Future<void> load() async { // initial load for anon (pre-auth)
+  static int _encodeColor(Color color) {
+    return (color.alpha << 24) |
+        (color.red << 16) |
+        (color.green << 8) |
+        color.blue;
+  }
+
+  Future<void> load() async {
+    // initial load for anon (pre-auth)
     if (_loaded) return;
     await _loadFor(userId: _currentUserId);
   }
@@ -94,7 +103,7 @@ class ProfileProvider extends ChangeNotifier {
         if (colorValue is int) {
           _avatarColor = colorValue; // stored locally as full 32-bit
         } else {
-          _avatarColor = Colors.tealAccent.value;
+          _avatarColor = _encodeColor(_defaultAvatarColor);
         }
         _completed = (map['completed'] ?? false) as bool;
       } catch (_) {
@@ -110,25 +119,33 @@ class ProfileProvider extends ChangeNotifier {
   void _resetDefaults() {
     _name = '';
     _bio = '';
-    _avatarColor = Colors.tealAccent.value;
+    _avatarColor = _encodeColor(_defaultAvatarColor);
     _completed = false;
   }
 
   Future<void> _persist() async {
     if (!_loaded) return;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_storageKey(_currentUserId), json.encode({
-      'name': _name,
-      'bio': _bio,
-  'avatarColor': _avatarColor, // store raw 32-bit value locally
-      'completed': _completed,
-    }));
+    await prefs.setString(
+      _storageKey(_currentUserId),
+      json.encode({
+        'name': _name,
+        'bio': _bio,
+        'avatarColor': _avatarColor, // store raw 32-bit value locally
+        'completed': _completed,
+      }),
+    );
   }
 
-  Future<void> update({String? name, String? bio, Color? avatarColor, bool? completed}) async {
+  Future<void> update({
+    String? name,
+    String? bio,
+    Color? avatarColor,
+    bool? completed,
+  }) async {
     if (name != null && name.trim().isNotEmpty) _name = name.trim();
     if (bio != null) _bio = bio;
-    if (avatarColor != null) _avatarColor = avatarColor.value;
+    if (avatarColor != null) _avatarColor = _encodeColor(avatarColor);
     if (completed != null) _completed = completed;
     notifyListeners();
     await _persist();
@@ -136,11 +153,23 @@ class ProfileProvider extends ChangeNotifier {
       unawaited(_pushRemote());
     }
   }
-  
-  Future<void> completeSetup({required String name, String bio = '', required Color avatarColor}) async {
-    _name = name.trim();
+
+  Future<void> completeSetup({
+    required String name,
+    String bio = '',
+    required Color avatarColor,
+  }) async {
+    final trimmedName = name.trim();
+    if (trimmedName.length < 2) {
+      throw ArgumentError.value(
+        name,
+        'name',
+        'Display name must be at least 2 characters.',
+      );
+    }
+    _name = trimmedName;
     _bio = bio;
-    _avatarColor = avatarColor.value;
+    _avatarColor = _encodeColor(avatarColor);
     _completed = true;
     notifyListeners();
     await _persist();
