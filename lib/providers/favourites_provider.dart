@@ -37,12 +37,26 @@ class FavouritesProvider extends ChangeNotifier {
   String? _lastError;
 
   List<FavouriteRecipe> get favourites => _favourites.values.toList()
-    ..sort((a,b)=>a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
   bool get isLoaded => _loaded;
   bool get syncing => _syncing;
   String? get lastError => _lastError;
   String? get currentUserId => _currentUserId;
   bool isFavourite(int id) => _favourites.containsKey(id);
+
+  bool _isValidFavourite(FavouriteRecipe recipe) {
+    if (recipe.id <= 0) {
+      _lastError = 'Favourite id must be positive.';
+      notifyListeners();
+      return false;
+    }
+    if (recipe.title.trim().isEmpty) {
+      _lastError = 'Favourite title is required.';
+      notifyListeners();
+      return false;
+    }
+    return true;
+  }
 
   Future<void> load() async {
     if (_loaded) return;
@@ -210,15 +224,20 @@ class FavouritesProvider extends ChangeNotifier {
   }
 
   Future<void> toggle(FavouriteRecipe recipe) async {
+    if (!isFavourite(recipe.id) && !_isValidFavourite(recipe)) {
+      return;
+    }
     if (isFavourite(recipe.id)) {
       _favourites.remove(recipe.id);
       notifyListeners();
       await _persist();
       await _deleteRemote(recipe.id);
+      _lastError = null;
     } else {
       _favourites[recipe.id] = recipe;
       notifyListeners();
       await _persist();
+      _lastError = null;
       unawaited(_pushRemote(recipe));
     }
   }
@@ -228,6 +247,7 @@ class FavouritesProvider extends ChangeNotifier {
     notifyListeners();
     await _persist();
     await _deleteRemote(id);
+    _lastError = null;
   }
 
   Future<void> clear() async {
@@ -235,5 +255,6 @@ class FavouritesProvider extends ChangeNotifier {
     notifyListeners();
     await _persist();
     await _clearRemote();
+    _lastError = null;
   }
 }
