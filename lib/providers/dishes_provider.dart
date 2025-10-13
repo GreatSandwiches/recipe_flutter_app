@@ -76,20 +76,48 @@ class DishesProvider extends ChangeNotifier {
 
   String _storageKey(String? userId) => '${_baseKey}_${userId ?? 'anon'}';
 
-  Future<void> load() async { if (_loaded) return; await _loadFor(_currentUserId); }
+  bool _isDishDataValid({required int recipeId, required String title}) {
+    if (recipeId <= 0) {
+      _lastError = 'Recipe id must be positive.';
+      notifyListeners();
+      return false;
+    }
+    if (title.trim().isEmpty) {
+      _lastError = 'Recipe title is required.';
+      notifyListeners();
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> load() async {
+    if (_loaded) return;
+    await _loadFor(_currentUserId);
+  }
 
   Future<void> switchUser(String? userId) async {
     if (_currentUserId == userId) return;
-    if (_loaded) { await _persist(); }
+    if (_loaded) {
+      await _persist();
+    }
     _currentUserId = userId;
     _loaded = false;
     _dishes.clear();
     await _loadFor(userId);
-    if (_currentUserId != null) { unawaited(_pullRemoteMerge()); }
+    if (_currentUserId != null) {
+      unawaited(_pullRemoteMerge());
+    }
   }
 
-  Future<void> markMade({required int recipeId, required String title, String? image}) async {
-    final existingIndex = _dishes.indexWhere((d)=>d.recipeId == recipeId);
+  Future<void> markMade({
+    required int recipeId,
+    required String title,
+    String? image,
+  }) async {
+    if (!_isDishDataValid(recipeId: recipeId, title: title)) {
+      return;
+    }
+    final existingIndex = _dishes.indexWhere((d) => d.recipeId == recipeId);
     // For now, only one record per recipe. If want multiples, remove this block.
     if (existingIndex != -1) {
       // move to top / update timestamp
@@ -100,31 +128,40 @@ class DishesProvider extends ChangeNotifier {
         madeAt: DateTime.now(),
       );
     } else {
-      _dishes.add(MadeDish(
-        recipeId: recipeId,
-        title: title,
-        image: image,
-        madeAt: DateTime.now(),
-      ));
+      _dishes.add(
+        MadeDish(
+          recipeId: recipeId,
+          title: title,
+          image: image,
+          madeAt: DateTime.now(),
+        ),
+      );
     }
     notifyListeners();
     await _persist();
-    if (_currentUserId != null) { unawaited(_pushRemoteSingle(recipeId)); }
+    _lastError = null;
+    if (_currentUserId != null) {
+      unawaited(_pushRemoteSingle(recipeId));
+    }
   }
 
-  bool isMade(int recipeId) => _dishes.any((d)=>d.recipeId == recipeId);
+  bool isMade(int recipeId) => _dishes.any((d) => d.recipeId == recipeId);
 
   Future<void> remove(int recipeId) async {
-    _dishes.removeWhere((d)=>d.recipeId == recipeId);
+    _dishes.removeWhere((d) => d.recipeId == recipeId);
     notifyListeners();
     await _persist();
-    if (_currentUserId != null) { unawaited(_deleteRemote(recipeId)); }
+    _lastError = null;
+    if (_currentUserId != null) {
+      unawaited(_deleteRemote(recipeId));
+    }
   }
 
   Future<void> clearLocal() async {
     _dishes.clear();
     notifyListeners();
     await _persist();
+    _lastError = null;
   }
 
   Future<void> _loadFor(String? userId) async {
