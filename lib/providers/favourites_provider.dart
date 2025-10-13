@@ -188,7 +188,10 @@ class FavouritesProvider extends ChangeNotifier {
     final userId = _currentUserId;
     if (client == null || userId == null) return;
     try {
-      await client.from(_remoteTable).delete().match({'user_id': userId, 'recipe_id': recipeId});
+      await client.from(_remoteTable).delete().match({
+        'user_id': userId,
+        'recipe_id': recipeId,
+      });
     } catch (e) {
       if (kDebugMode) {
         print('Favourites remote delete error: $e');
@@ -215,7 +218,9 @@ class FavouritesProvider extends ChangeNotifier {
     if (client == null || userId == null) return;
     if (_favourites.isEmpty) return;
     try {
-      await client.from(_remoteTable).upsert(_favourites.values.map(_mapForRemote).toList());
+      await client
+          .from(_remoteTable)
+          .upsert(_favourites.values.map(_mapForRemote).toList());
     } catch (e) {
       if (kDebugMode) {
         print('Favourites remote bulk upsert error: $e');
