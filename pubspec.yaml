@@ -23,6 +23,11 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
 
+dependency_overrides:
+  # Ensure compatibility with Xcode 16 (iOS 18 / Swift 6 toolchain)
+  sign_in_with_apple: ^7.0.1
+  webview_flutter_wkwebview: 3.23.0
+
 flutter:
 
   # The following line ensures that the Material Icons font is
