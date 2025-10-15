@@ -1,5 +1,5 @@
 # Uncomment this line to define a global platform for your project
-# platform :ios, '12.0'
+platform :ios, '13.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
@@ -37,7 +37,17 @@ target 'Runner' do
 end
 
 post_install do |installer|
+  # Ensure the Pods project itself is set to the correct deployment target
+  installer.pods_project.build_configurations.each do |config|
+    config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+  end
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    # Force all pods to use iOS 12.0 to match the app's minimum deployment target
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      # Avoid Swift 6 migration issues in some third-party pods by pinning Swift 5.9 language mode
+      config.build_settings['SWIFT_VERSION'] = '5.9'
+    end
   end
 end
