@@ -20,7 +20,7 @@ class SpoonacularService {
   static String _requireApiKey() {
     if (_isInvalidKey(_apiKey)) {
       throw Exception(
-        'Spoonacular API key not configured. Set SPOONACULAR_API_KEY in .env then fully restart the app.',
+        'Spoonacular API key not configured.',
       );
     }
     return _apiKey!;
