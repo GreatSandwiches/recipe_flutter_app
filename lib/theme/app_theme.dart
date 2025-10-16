@@ -15,20 +15,22 @@ ThemeData buildAppTheme({required bool dark}) {
   final baseText = GoogleFonts.poppinsTextTheme();
 
   TextTheme themed(TextTheme base) => base.copyWith(
-        displayLarge: base.displayLarge?.copyWith(fontWeight: FontWeight.w600),
-        displayMedium: base.displayMedium?.copyWith(fontWeight: FontWeight.w600),
-        titleLarge: base.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-        titleMedium: base.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-        labelLarge: base.labelLarge?.copyWith(letterSpacing: .5),
-      );
+    displayLarge: base.displayLarge?.copyWith(fontWeight: FontWeight.w600),
+    displayMedium: base.displayMedium?.copyWith(fontWeight: FontWeight.w600),
+    titleLarge: base.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+    titleMedium: base.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+    labelLarge: base.labelLarge?.copyWith(letterSpacing: .5),
+  );
 
   return ThemeData(
     useMaterial3: true,
     colorScheme: colorScheme,
-    textTheme: themed(baseText.apply(
-      displayColor: colorScheme.onSurface,
-      bodyColor: colorScheme.onSurface,
-    )),
+    textTheme: themed(
+      baseText.apply(
+        displayColor: colorScheme.onSurface,
+        bodyColor: colorScheme.onSurface,
+      ),
+    ),
     appBarTheme: AppBarTheme(
       backgroundColor: colorScheme.surface,
       elevation: 0,

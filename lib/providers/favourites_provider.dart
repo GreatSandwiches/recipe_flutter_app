@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// Represents a user's saved recipe with minimal metadata.
 class FavouriteRecipe {
   final int id;
   final String title;
@@ -17,6 +19,7 @@ class FavouriteRecipe {
     this.readyInMinutes,
   });
 
+  /// Serializes the recipe into a map suitable for persistence.
   Map<String, dynamic> toMap() => {
     'id': id,
     'title': title,
@@ -24,6 +27,7 @@ class FavouriteRecipe {
     'readyInMinutes': readyInMinutes,
   };
 
+  /// Hydrates a [FavouriteRecipe] from stored map data.
   factory FavouriteRecipe.fromMap(Map<String, dynamic> map) => FavouriteRecipe(
     id: map['id'],
     title: map['title'],
@@ -32,6 +36,7 @@ class FavouriteRecipe {
   );
 }
 
+/// Coordinates local persistence and Supabase sync for recipe favourites.
 class FavouritesProvider extends ChangeNotifier {
   static const _prefsKey = 'favourites_v1';
   static const _remoteTable = 'favourite_recipes';
@@ -41,14 +46,18 @@ class FavouritesProvider extends ChangeNotifier {
   bool _syncing = false;
   String? _lastError;
 
+  /// Alphabetised list of favourite recipes to render in UI.
   List<FavouriteRecipe> get favourites => _favourites.values.toList()
     ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
   bool get isLoaded => _loaded;
   bool get syncing => _syncing;
   String? get lastError => _lastError;
   String? get currentUserId => _currentUserId;
+
+  /// Returns true when a recipe id is already favourited.
   bool isFavourite(int id) => _favourites.containsKey(id);
 
+  /// Validates incoming favourites before persistence and surfaces user errors.
   bool _isValidFavourite(FavouriteRecipe recipe) {
     if (recipe.id <= 0) {
       _lastError = 'Favourite id must be positive.';
@@ -63,14 +72,20 @@ class FavouritesProvider extends ChangeNotifier {
     return true;
   }
 
+  /// Loads favourites for the active user from local storage.
   Future<void> load() async {
-    if (_loaded) return;
+    if (_loaded) {
+      return;
+    }
     await _loadFor(userId: _currentUserId);
   }
 
-  String _storageKey(String? userId) => '${_prefsKey}_${userId ?? 'anon'}';
+  /// Builds a per-user SharedPreferences key.
+  String _storageKey(String? userId) =>
+      '${_prefsKey}_${userId ?? 'anon'}';
 
-  SupabaseClient? get _client {
+  /// Lazily resolves the Supabase client, returning null if not configured.
+  SupabaseClient? get _supabaseClient {
     try {
       return Supabase.instance.client;
     } catch (_) {
@@ -78,12 +93,16 @@ class FavouritesProvider extends ChangeNotifier {
     }
   }
 
+  /// Hydrates favourites for the provided user id, migrating anon data when
+  /// needed.
   Future<void> _loadFor({required String? userId}) async {
     final prefs = await SharedPreferences.getInstance();
     final key = _storageKey(userId);
     final jsonString =
         prefs.getString(key) ??
-        (userId == null ? prefs.getString(_prefsKey) : null);
+    (userId == null
+      ? prefs.getString(_prefsKey)
+      : null);
     _favourites.clear();
     if (jsonString != null) {
       try {
@@ -104,8 +123,11 @@ class FavouritesProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Persists current favourites then loads data for a new user id.
   Future<void> switchUser(String? userId) async {
-    if (_currentUserId == userId) return;
+    if (_currentUserId == userId) {
+      return;
+    }
     if (_loaded) {
       await _persist();
     }
@@ -118,8 +140,11 @@ class FavouritesProvider extends ChangeNotifier {
     }
   }
 
+  /// Saves favourites for the active user into SharedPreferences.
   Future<void> _persist() async {
-    if (!_loaded) return;
+    if (!_loaded) {
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _storageKey(_currentUserId),
@@ -127,6 +152,7 @@ class FavouritesProvider extends ChangeNotifier {
     );
   }
 
+  /// Formats a favourite for Supabase persistence.
   Map<String, dynamic> _mapForRemote(FavouriteRecipe fav) => {
     'user_id': _currentUserId,
     'recipe_id': fav.id,
@@ -135,8 +161,9 @@ class FavouritesProvider extends ChangeNotifier {
     'ready_in_minutes': fav.readyInMinutes,
   };
 
+  /// Pulls favourites from Supabase, merges them, then upserts local entries.
   Future<void> _pullRemoteMerge() async {
-    final client = _client;
+    final client = _supabaseClient;
     final userId = _currentUserId;
     if (client == null || userId == null) {
       return;
@@ -152,7 +179,9 @@ class FavouritesProvider extends ChangeNotifier {
       bool changed = false;
       for (final row in rows) {
         final id = row['recipe_id'] as int;
-        if (_favourites.containsKey(id)) continue;
+        if (_favourites.containsKey(id)) {
+          continue;
+        }
         final ready = row['ready_in_minutes'];
         final fav = FavouriteRecipe(
           id: id,
@@ -180,10 +209,13 @@ class FavouritesProvider extends ChangeNotifier {
     }
   }
 
+  /// Pushes a single favourite to Supabase.
   Future<void> _pushRemote(FavouriteRecipe fav) async {
-    final client = _client;
+    final client = _supabaseClient;
     final userId = _currentUserId;
-    if (client == null || userId == null) return;
+    if (client == null || userId == null) {
+      return;
+    }
     try {
       await client.from(_remoteTable).upsert(_mapForRemote(fav));
     } catch (e) {
@@ -193,10 +225,13 @@ class FavouritesProvider extends ChangeNotifier {
     }
   }
 
+  /// Deletes a favourite from Supabase by recipe id.
   Future<void> _deleteRemote(int recipeId) async {
-    final client = _client;
+    final client = _supabaseClient;
     final userId = _currentUserId;
-    if (client == null || userId == null) return;
+    if (client == null || userId == null) {
+      return;
+    }
     try {
       await client.from(_remoteTable).delete().match({
         'user_id': userId,
@@ -209,10 +244,13 @@ class FavouritesProvider extends ChangeNotifier {
     }
   }
 
+  /// Removes every favourite for the active user from Supabase.
   Future<void> _clearRemote() async {
-    final client = _client;
+    final client = _supabaseClient;
     final userId = _currentUserId;
-    if (client == null || userId == null) return;
+    if (client == null || userId == null) {
+      return;
+    }
     try {
       await client.from(_remoteTable).delete().eq('user_id', userId);
     } catch (e) {
@@ -222,11 +260,16 @@ class FavouritesProvider extends ChangeNotifier {
     }
   }
 
+  /// Upserts the complete favourites collection to Supabase.
   Future<void> _pushAllRemote() async {
-    final client = _client;
+    final client = _supabaseClient;
     final userId = _currentUserId;
-    if (client == null || userId == null) return;
-    if (_favourites.isEmpty) return;
+    if (client == null || userId == null) {
+      return;
+    }
+    if (_favourites.isEmpty) {
+      return;
+    }
     try {
       await client
           .from(_remoteTable)
@@ -238,6 +281,7 @@ class FavouritesProvider extends ChangeNotifier {
     }
   }
 
+  /// Adds or removes a favourite recipe, syncing the change to Supabase.
   Future<void> toggle(FavouriteRecipe recipe) async {
     if (!isFavourite(recipe.id) && !_isValidFavourite(recipe)) {
       return;
@@ -257,6 +301,7 @@ class FavouritesProvider extends ChangeNotifier {
     }
   }
 
+  /// Removes a favourite recipe by id.
   Future<void> remove(int id) async {
     _favourites.remove(id);
     notifyListeners();
@@ -265,6 +310,7 @@ class FavouritesProvider extends ChangeNotifier {
     _lastError = null;
   }
 
+  /// Clears all favourites for the active user.
   Future<void> clear() async {
     _favourites.clear();
     notifyListeners();

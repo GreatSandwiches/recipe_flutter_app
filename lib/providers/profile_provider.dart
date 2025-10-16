@@ -1,9 +1,11 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// Handles local persistence and Supabase sync for the user's profile.
 class ProfileProvider extends ChangeNotifier {
   static const _baseKey = 'profile_v1';
   static const Color _defaultAvatarColor = Colors.tealAccent;
@@ -16,27 +18,42 @@ class ProfileProvider extends ChangeNotifier {
   bool _remoteSyncing = false;
   String? _lastRemoteError;
 
+  /// Current display name for UI consumption.
   String get name => _name;
+
+  /// User-supplied bio text.
   String get bio => _bio;
+
+  /// Chosen avatar color in ARGB form.
   Color get avatarColor => Color(_avatarColor);
+
   bool get isLoaded => _loaded;
   bool get isCompleted => _completed;
   String? get userId => _currentUserId;
   bool get remoteSyncing => _remoteSyncing;
   String? get lastRemoteError => _lastRemoteError;
 
+  /// Builds a SharedPreferences key for the given user id.
   String _storageKey(String? userId) => '${_baseKey}_${userId ?? 'anon'}';
 
+  /// Normalizes a [Color] into its 32-bit ARGB integer representation.
   static int _encodeColor(Color color) => color.toARGB32();
 
+  /// Loads profile data for the active user, including anon defaults.
   Future<void> load() async {
     // initial load for anon (pre-auth)
-    if (_loaded) return;
+    if (_loaded) {
+      return;
+    }
     await _loadFor(userId: _currentUserId);
   }
 
+  /// Persists the existing profile then loads data for a new Supabase user id.
   Future<void> switchUser(String? userId) async {
-    if (_currentUserId == userId) return; // no change
+    if (_currentUserId == userId) {
+      // no change
+      return;
+    }
     // Persist current user profile before switching
     if (_loaded) {
       await _persist();
@@ -50,12 +67,19 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
+  /// Encodes the avatar color into a 24-bit format suitable for Postgres
+  /// storage.
   int _color24() => _avatarColor & 0x00FFFFFF; // strip alpha so it fits in int4
 
+  /// Ensures a Supabase row exists for the current user and merges when needed.
   Future<void> ensureRemoteRow() async {
-    if (_currentUserId == null) return;
+    if (_currentUserId == null) {
+      return;
+    }
     final client = _supabaseClient;
-    if (client == null) return;
+    if (client == null) {
+      return;
+    }
     debugPrint('ENSURE REMOTE ROW: Starting for user $_currentUserId');
     try {
       final existing = await client
@@ -74,7 +98,8 @@ class ProfileProvider extends ChangeNotifier {
           'completed': _completed,
         });
         debugPrint('ENSURE REMOTE ROW: Insert completed');
-        // Skip immediate fetch after insert to avoid overwriting newer local state with defaults
+        // Skip immediate fetch after insert to avoid overwriting newer local
+        // state with defaults
       } else {
         debugPrint('ENSURE REMOTE ROW: Row already exists');
         // Fetch full row (merge) only when a prior row exists
@@ -85,6 +110,7 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
+  /// Hydrates local state for the given user id from SharedPreferences.
   Future<void> _loadFor({required String? userId}) async {
     final prefs = await SharedPreferences.getInstance();
     final key = _storageKey(userId);
@@ -111,6 +137,7 @@ class ProfileProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Resets profile fields to initial defaults when no data exists.
   void _resetDefaults() {
     _name = '';
     _bio = '';
@@ -118,8 +145,11 @@ class ProfileProvider extends ChangeNotifier {
     _completed = false;
   }
 
+  /// Saves the current profile state for the active user.
   Future<void> _persist() async {
-    if (!_loaded) return;
+    if (!_loaded) {
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _storageKey(_currentUserId),
@@ -132,16 +162,25 @@ class ProfileProvider extends ChangeNotifier {
     );
   }
 
+  /// Applies partial updates and syncs them to Supabase in the background.
   Future<void> update({
     String? name,
     String? bio,
     Color? avatarColor,
     bool? completed,
   }) async {
-    if (name != null && name.trim().isNotEmpty) _name = name.trim();
-    if (bio != null) _bio = bio;
-    if (avatarColor != null) _avatarColor = _encodeColor(avatarColor);
-    if (completed != null) _completed = completed;
+    if (name != null && name.trim().isNotEmpty) {
+      _name = name.trim();
+    }
+    if (bio != null) {
+      _bio = bio;
+    }
+    if (avatarColor != null) {
+      _avatarColor = _encodeColor(avatarColor);
+    }
+    if (completed != null) {
+      _completed = completed;
+    }
     notifyListeners();
     await _persist();
     if (_currentUserId != null) {
@@ -149,6 +188,7 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
+  /// Finalizes profile onboarding and performs a best-effort remote sync.
   Future<void> completeSetup({
     required String name,
     String bio = '',
@@ -187,6 +227,8 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
+  /// Lazily resolves the shared Supabase client, returning null when
+  /// unconfigured.
   SupabaseClient? get _supabaseClient {
     try {
       return Supabase.instance.client;
@@ -195,9 +237,12 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
+  /// Pulls profile data from Supabase and merges with local values.
   Future<void> _fetchRemoteAndMerge(String userId) async {
     final client = _supabaseClient;
-    if (client == null) return;
+    if (client == null) {
+      return;
+    }
     _remoteSyncing = true;
     _lastRemoteError = null;
     notifyListeners();
@@ -207,7 +252,9 @@ class ProfileProvider extends ChangeNotifier {
           .select('name,bio,avatar_color,completed')
           .eq('id', userId)
           .maybeSingle();
-      if (resp == null) return;
+      if (resp == null) {
+        return;
+      }
       bool changed = false;
       final remoteName = (resp['name'] ?? '') as String;
       final remoteBio = (resp['bio'] ?? '') as String;
@@ -230,7 +277,8 @@ class ProfileProvider extends ChangeNotifier {
           changed = true;
         }
       }
-      // Never downgrade completion from true to false (avoid race with initial insert)
+      // Never downgrade completion from true to false (avoid race with the
+      // initial insert)
       if (remoteCompleted && !_completed) {
         _completed = true;
         changed = true;
@@ -251,11 +299,15 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
+  /// Upserts the current profile payload to Supabase.
   Future<void> _pushRemote() async {
     final client = _supabaseClient;
-    if (client == null || _currentUserId == null) return;
+    if (client == null || _currentUserId == null) {
+      return;
+    }
     debugPrint(
-      'PUSH REMOTE: Starting for user $_currentUserId, client available',
+      'PUSH REMOTE: Starting for user $_currentUserId, '
+      'client available',
     );
     try {
       final data = {
@@ -271,7 +323,8 @@ class ProfileProvider extends ChangeNotifier {
     } on PostgrestException catch (e) {
       _lastRemoteError = e.message;
       debugPrint(
-        'PUSH REMOTE ERROR: PostgrestException - ${e.message}, details: ${e.details}, hint: ${e.hint}',
+        'PUSH REMOTE ERROR: PostgrestException - ${e.message}, '
+        'details: ${e.details}, hint: ${e.hint}',
       );
     } catch (e) {
       _lastRemoteError = e.toString();
@@ -279,9 +332,12 @@ class ProfileProvider extends ChangeNotifier {
     }
   }
 
+  /// Diagnostic helper to fetch the raw remote row for the active user.
   Future<Map<String, dynamic>?> debugFetchRemoteRaw() async {
     final client = _supabaseClient;
-    if (client == null || _currentUserId == null) return null;
+    if (client == null || _currentUserId == null) {
+      return null;
+    }
     try {
       final row = await client
           .from('profiles')

@@ -24,9 +24,11 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
 dependency_overrides:
-  # Ensure compatibility with Xcode 16 (iOS 18 / Swift 6 toolchain)
-  sign_in_with_apple: ^7.0.1
-  webview_flutter_wkwebview: 3.23.0
+  # Apply local patches for Swift 6 / Xcode 16 compatibility
+  sign_in_with_apple:
+    path: third_party/sign_in_with_apple
+  webview_flutter_wkwebview:
+    path: third_party/webview_flutter_wkwebview
 
 flutter:
 
@@ -38,4 +40,10 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - .env
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-SemiBold.ttf
+          weight: 600
   #   - images/a_dot_ham.jpeg

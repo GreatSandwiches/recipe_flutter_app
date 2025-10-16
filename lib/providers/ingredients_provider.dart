@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math; // added for logarithmic scoring
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:math' as math; // added for logarithmic scoring
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// Structured ingredient entry with optional quantity metadata and tags.
 class IngredientEntry {
   final String original;
   final String name;
@@ -25,6 +27,7 @@ class IngredientEntry {
     this.tags = const [],
   });
 
+  /// Returns a copy applying any provided overrides.
   IngredientEntry copyWith({
     String? original,
     String? name,
@@ -43,7 +46,8 @@ class IngredientEntry {
     tags: tags ?? this.tags,
   );
 
-  Map<String,dynamic> toMap() => {
+  /// Converts the entry into a compact map for local or remote persistence.
+  Map<String, dynamic> toMap() => {
     'o': original,
     'n': name,
     'q': quantity, // legacy single
@@ -52,32 +56,42 @@ class IngredientEntry {
     'qMax': quantityMax,
     't': tags,
   };
-  factory IngredientEntry.fromMap(Map<String,dynamic> m) => IngredientEntry(
+
+  /// Rehydrates an [IngredientEntry] from persistent storage metadata.
+  factory IngredientEntry.fromMap(Map<String, dynamic> m) => IngredientEntry(
     original: m['o'] as String,
     name: m['n'] as String,
     quantity: (m['q'] is num) ? (m['q'] as num).toDouble() : null,
     unit: m['u'] as String?,
-    quantityMin: (m['qMin'] is num) ? (m['qMin'] as num).toDouble() : (m['q'] is num ? (m['q'] as num).toDouble(): null),
-    quantityMax: (m['qMax'] is num) ? (m['qMax'] as num).toDouble() : (m['q'] is num ? (m['q'] as num).toDouble(): null),
-    tags: (m['t'] is List) ? (m['t'] as List).whereType<String>().toList() : const [],
+    quantityMin: (m['qMin'] is num)
+        ? (m['qMin'] as num).toDouble()
+        : (m['q'] is num ? (m['q'] as num).toDouble() : null),
+    quantityMax: (m['qMax'] is num)
+        ? (m['qMax'] as num).toDouble()
+        : (m['q'] is num ? (m['q'] as num).toDouble() : null),
+    tags: (m['t'] is List)
+        ? (m['t'] as List).whereType<String>().toList()
+        : const [],
   );
 }
 
 enum AddResult { added, duplicate, invalid }
 
+/// Manages the user's pantry ingredients locally and optionally via Supabase.
 class IngredientsProvider extends ChangeNotifier {
   static const _prefsKeyV1 = 'ingredients_v1'; // legacy (List<String>)
   static const _prefsKeyV2 = 'ingredients_v2'; // new structured list
   static const _prefsKeyUsage = 'ingredients_usage_v1';
   static const _remoteTable = 'pantry_items';
   final List<IngredientEntry> _entries = [];
-  final Map<String,int> _usage = {}; // usage frequency for ranking suggestions
+  final Map<String, int> _usage = {}; // usage frequency for ranking suggestions
   bool _loaded = false;
   String? _currentUserId;
   bool _remoteSyncing = false;
   String? _lastRemoteError;
 
-  // Basic synonym + canonical forms (can be expanded)
+  /// Normalization map translating plural or alternate names to canonical
+  /// forms.
   static const Map<String, String> _synonyms = {
     'tomatoes': 'tomato',
     'potatoes': 'potato',
@@ -95,17 +109,24 @@ class IngredientsProvider extends ChangeNotifier {
     'pickles': 'pickle',
   };
 
-  // Backwards-compatible simple names list (unique, sorted)
-  List<String> get ingredients => _entries.map((e)=>e.name).toSet().toList()..sort();
+  /// Backwards-compatible simple names list (unique, sorted).
+  List<String> get ingredients =>
+      _entries.map((e) => e.name).toSet().toList()..sort();
+
+  /// Immutable snapshot of fully parsed ingredient entries.
   List<IngredientEntry> get entries => List.unmodifiable(_entries);
   bool get isLoaded => _loaded;
   bool get remoteSyncing => _remoteSyncing;
   String? get lastRemoteError => _lastRemoteError;
   String? get currentUserId => _currentUserId;
 
-  String _storageKey(String base, String? userId) => '${base}_${userId ?? 'anon'}';
+  /// Builds a per-user storage key for SharedPreferences persistence.
+  String _storageKey(String base, String? userId) =>
+      '${base}_${userId ?? 'anon'}';
 
-  SupabaseClient? get _client {
+  /// Lazily resolves the shared Supabase client, returning null when
+  /// unconfigured.
+  SupabaseClient? get _supabaseClient {
     try {
       return Supabase.instance.client;
     } catch (_) {
@@ -113,25 +134,211 @@ class IngredientsProvider extends ChangeNotifier {
     }
   }
 
-  // Additional default tags for hash (#) suggestions
+  /// Additional default tags surfaced when a user types `#`.
   static const List<String> _defaultTags = [
-    'vegan','vegetarian','glutenfree','dairyfree','lowcarb','keto','paleo','spicy','sweet','savory','organic','fresh','quick','simple','holiday','grill','bake'
+    'vegan',
+    'vegetarian',
+    'glutenfree',
+    'dairyfree',
+    'lowcarb',
+    'keto',
+    'paleo',
+    'spicy',
+    'sweet',
+    'savory',
+    'organic',
+    'fresh',
+    'quick',
+    'simple',
+    'holiday',
+    'grill',
+    'bake',
   ];
 
-  // Expanded pantry / produce / protein / spice suggestions
+  /// Expanded pantry / produce / protein / spice suggestions.
   static const List<String> _extended = [
-    'apple','banana','orange','strawberry','blueberry','raspberry','grape','pineapple','mango','avocado','broccoli','cauliflower','zucchini','cucumber','bell pepper','jalapeno','chili','potato','sweet potato','pumpkin','squash','kale','lettuce','cabbage','corn','peas','green beans','black beans','kidney beans','chickpeas','lentils','quinoa','oats','bread','tortilla','buttermilk','cream','heavy cream','whipping cream','sour cream','cottage cheese','mozzarella','cheddar','parmesan','feta','goat cheese','ricotta','almond milk','coconut milk','coconut cream','peanut butter','almond butter','tahini','sesame oil','canola oil','vegetable oil','sunflower oil','coconut oil','brown sugar','powdered sugar','vanilla','cinnamon','nutmeg','clove','paprika','smoked paprika','cumin','turmeric','coriander','cardamom','cayenne','chili powder','italian seasoning','rosemary','thyme','sage','dill','mint','cilantro','bay leaf','yeast','baking powder','baking soda','cornstarch','cocoa powder','chocolate chips','maple syrup','molasses','mustard','mayonnaise','ketchup','hot sauce','sriracha','barbecue sauce','fish sauce','oyster sauce','hoisin sauce','sesame seeds','pumpkin seeds','sunflower seeds','chia seeds','flax seeds','walnut','almond','pecan','cashew','pistachio','hazelnut','shrimp','salmon','tuna','cod','tilapia','anchovy','clam','mussel','scallop','tofu','tempeh','seitan','bacon','sausage','ham','turkey','lamb','duck','eggplant','arugula','leek','shallot','scallion','green onion','lime juice','lemon juice','zest','ginger root','garlic powder','onion powder','broth','chicken broth','beef broth','vegetable broth','stock','gelatin','panko','breadcrumbs','noodles','spaghetti','linguine','fettuccine','udon','soba','rice vinegar','balsamic vinegar','apple cider vinegar','red wine vinegar','white wine vinegar','white vinegar','powdered gelatin','agave','salsa','guacamole','relish','pickle','pickle juice','capers'
+    'apple',
+    'banana',
+    'orange',
+    'strawberry',
+    'blueberry',
+    'raspberry',
+    'grape',
+    'pineapple',
+    'mango',
+    'avocado',
+    'broccoli',
+    'cauliflower',
+    'zucchini',
+    'cucumber',
+    'bell pepper',
+    'jalapeno',
+    'chili',
+    'potato',
+    'sweet potato',
+    'pumpkin',
+    'squash',
+    'kale',
+    'lettuce',
+    'cabbage',
+    'corn',
+    'peas',
+    'green beans',
+    'black beans',
+    'kidney beans',
+    'chickpeas',
+    'lentils',
+    'quinoa',
+    'oats',
+    'bread',
+    'tortilla',
+    'buttermilk',
+    'cream',
+    'heavy cream',
+    'whipping cream',
+    'sour cream',
+    'cottage cheese',
+    'mozzarella',
+    'cheddar',
+    'parmesan',
+    'feta',
+    'goat cheese',
+    'ricotta',
+    'almond milk',
+    'coconut milk',
+    'coconut cream',
+    'peanut butter',
+    'almond butter',
+    'tahini',
+    'sesame oil',
+    'canola oil',
+    'vegetable oil',
+    'sunflower oil',
+    'coconut oil',
+    'brown sugar',
+    'powdered sugar',
+    'vanilla',
+    'cinnamon',
+    'nutmeg',
+    'clove',
+    'paprika',
+    'smoked paprika',
+    'cumin',
+    'turmeric',
+    'coriander',
+    'cardamom',
+    'cayenne',
+    'chili powder',
+    'italian seasoning',
+    'rosemary',
+    'thyme',
+    'sage',
+    'dill',
+    'mint',
+    'cilantro',
+    'bay leaf',
+    'yeast',
+    'baking powder',
+    'baking soda',
+    'cornstarch',
+    'cocoa powder',
+    'chocolate chips',
+    'maple syrup',
+    'molasses',
+    'mustard',
+    'mayonnaise',
+    'ketchup',
+    'hot sauce',
+    'sriracha',
+    'barbecue sauce',
+    'fish sauce',
+    'oyster sauce',
+    'hoisin sauce',
+    'sesame seeds',
+    'pumpkin seeds',
+    'sunflower seeds',
+    'chia seeds',
+    'flax seeds',
+    'walnut',
+    'almond',
+    'pecan',
+    'cashew',
+    'pistachio',
+    'hazelnut',
+    'shrimp',
+    'salmon',
+    'tuna',
+    'cod',
+    'tilapia',
+    'anchovy',
+    'clam',
+    'mussel',
+    'scallop',
+    'tofu',
+    'tempeh',
+    'seitan',
+    'bacon',
+    'sausage',
+    'ham',
+    'turkey',
+    'lamb',
+    'duck',
+    'eggplant',
+    'arugula',
+    'leek',
+    'shallot',
+    'scallion',
+    'green onion',
+    'lime juice',
+    'lemon juice',
+    'zest',
+    'ginger root',
+    'garlic powder',
+    'onion powder',
+    'broth',
+    'chicken broth',
+    'beef broth',
+    'vegetable broth',
+    'stock',
+    'gelatin',
+    'panko',
+    'breadcrumbs',
+    'noodles',
+    'spaghetti',
+    'linguine',
+    'fettuccine',
+    'udon',
+    'soba',
+    'rice vinegar',
+    'balsamic vinegar',
+    'apple cider vinegar',
+    'red wine vinegar',
+    'white wine vinegar',
+    'white vinegar',
+    'powdered gelatin',
+    'agave',
+    'salsa',
+    'guacamole',
+    'relish',
+    'pickle',
+    'pickle juice',
+    'capers',
   ];
 
-  // Recent additions (in-memory, not persisted) to boost suggestions
+  /// Recent additions (in-memory, not persisted) to boost suggestions.
   final List<String> _recent = [];
   static const int _recentCap = 12;
 
+  /// Loads pantry data for the active user. No-op on subsequent calls.
   Future<void> load() async {
-    if (_loaded) return;
+    if (_loaded) {
+      return;
+    }
     await _loadFor(userId: _currentUserId);
   }
 
+  /// Loads pantry data for a specific user id, migrating legacy formats when
+  /// found.
   Future<void> _loadFor({required String? userId}) async {
     final prefs = await SharedPreferences.getInstance();
     final String storageKeyV2 = _storageKey(_prefsKeyV2, userId);
@@ -148,9 +355,15 @@ class IngredientsProvider extends ChangeNotifier {
     if (rawV2 != null) {
       try {
         final list = (json.decode(rawV2) as List).cast<Map>();
-        _entries.addAll(list.map((m) => IngredientEntry.fromMap(Map<String, dynamic>.from(m))));
+        _entries.addAll(
+          list.map(
+            (m) => IngredientEntry.fromMap(Map<String, dynamic>.from(m)),
+          ),
+        );
       } catch (e) {
-        debugPrint('IngredientsProvider: failed to decode structured pantry data: $e');
+        debugPrint(
+          'IngredientsProvider: failed to decode structured pantry data: $e',
+        );
       }
     } else if (userId == null) {
       final rawV1 = prefs.getString(_prefsKeyV1);
@@ -164,7 +377,9 @@ class IngredientsProvider extends ChangeNotifier {
             }
           }
         } catch (e) {
-          debugPrint('IngredientsProvider: failed to migrate legacy pantry data: $e');
+          debugPrint(
+            'IngredientsProvider: failed to migrate legacy pantry data: $e',
+          );
         }
       }
     }
@@ -177,7 +392,9 @@ class IngredientsProvider extends ChangeNotifier {
       try {
         final m = (json.decode(rawUsage) as Map).cast<String, dynamic>();
         m.forEach((k, v) {
-          if (v is num) _usage[k] = v.toInt();
+          if (v is num) {
+            _usage[k] = v.toInt();
+          }
         });
       } catch (e) {
         debugPrint('IngredientsProvider: failed to decode usage map: $e');
@@ -189,8 +406,12 @@ class IngredientsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Switches the provider context to another user while persisting current
+  /// data first.
   Future<void> switchUser(String? userId) async {
-    if (_currentUserId == userId) return;
+    if (_currentUserId == userId) {
+      return;
+    }
     if (_loaded) {
       await _persist();
     }
@@ -203,13 +424,23 @@ class IngredientsProvider extends ChangeNotifier {
     }
   }
 
+  /// Persists pantry entries and usage statistics for the active user.
   Future<void> _persist() async {
-    if (!_loaded) return;
+    if (!_loaded) {
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_storageKey(_prefsKeyV2, _currentUserId), json.encode(_entries.map((e)=>e.toMap()).toList()));
-    await prefs.setString(_storageKey(_prefsKeyUsage, _currentUserId), json.encode(_usage));
+    await prefs.setString(
+      _storageKey(_prefsKeyV2, _currentUserId),
+      json.encode(_entries.map((e) => e.toMap()).toList()),
+    );
+    await prefs.setString(
+      _storageKey(_prefsKeyUsage, _currentUserId),
+      json.encode(_usage),
+    );
   }
 
+  /// Creates the payload expected by the Supabase `pantry_items` table.
   Map<String, dynamic> _remotePayloadFor(IngredientEntry entry) => {
     'user_id': _currentUserId,
     'name': entry.name,
@@ -217,7 +448,13 @@ class IngredientsProvider extends ChangeNotifier {
     'original': entry.original,
   };
 
-  IngredientEntry? _entryFromRemote(dynamic raw, {required String fallbackName, String? fallbackOriginal}) {
+  /// Safely reconstructs an [IngredientEntry] from remote payloads with
+  /// fallbacks.
+  IngredientEntry? _entryFromRemote(
+    dynamic raw, {
+    required String fallbackName,
+    String? fallbackOriginal,
+  }) {
     try {
       Map<String, dynamic>? map;
       if (raw is Map<String, dynamic>) {
@@ -232,7 +469,10 @@ class IngredientsProvider extends ChangeNotifier {
       }
       final entry = IngredientEntry.fromMap(map);
       if (entry.name.isEmpty && fallbackName.isNotEmpty) {
-        return entry.copyWith(name: fallbackName, original: fallbackOriginal ?? entry.original);
+        return entry.copyWith(
+          name: fallbackName,
+          original: fallbackOriginal ?? entry.original,
+        );
       }
       return entry;
     } catch (e) {
@@ -241,15 +481,23 @@ class IngredientsProvider extends ChangeNotifier {
     }
   }
 
+  /// Simple list equality check that avoids allocating new collections.
   bool _listEquals(List<String> a, List<String> b) {
-    if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
+    if (identical(a, b)) {
+      return true;
+    }
+    if (a.length != b.length) {
+      return false;
+    }
     for (int i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
+      if (a[i] != b[i]) {
+        return false;
+      }
     }
     return true;
   }
 
+  /// Compares two entries for structural equality to avoid unnecessary writes.
   bool _entriesEqual(IngredientEntry a, IngredientEntry b) {
     return a.original == b.original &&
         a.name == b.name &&
@@ -260,8 +508,10 @@ class IngredientsProvider extends ChangeNotifier {
         _listEquals(a.tags, b.tags);
   }
 
+  /// Pulls pantry rows from Supabase, merges them, then pushes local updates
+  /// back.
   Future<void> _pullRemoteMerge() async {
-    final client = _client;
+    final client = _supabaseClient;
     final userId = _currentUserId;
     if (client == null || userId == null) {
       return;
@@ -277,8 +527,14 @@ class IngredientsProvider extends ChangeNotifier {
       bool changed = false;
       for (final row in response) {
         final name = (row['name'] ?? '') as String;
-        final entry = _entryFromRemote(row['serialized'], fallbackName: name, fallbackOriginal: row['original'] as String?);
-        if (entry == null || entry.name.isEmpty) continue;
+        final entry = _entryFromRemote(
+          row['serialized'],
+          fallbackName: name,
+          fallbackOriginal: row['original'] as String?,
+        );
+        if (entry == null || entry.name.isEmpty) {
+          continue;
+        }
         final idx = _entries.indexWhere((e) => e.name == entry.name);
         if (idx == -1) {
           _entries.add(entry);
@@ -305,13 +561,20 @@ class IngredientsProvider extends ChangeNotifier {
     }
   }
 
+  /// Pushes the entire pantry list to Supabase for the current user.
   Future<void> _pushAllRemote() async {
-    final client = _client;
+    final client = _supabaseClient;
     final userId = _currentUserId;
-    if (client == null || userId == null) return;
-    if (_entries.isEmpty) return;
+    if (client == null || userId == null) {
+      return;
+    }
+    if (_entries.isEmpty) {
+      return;
+    }
     try {
-      await client.from(_remoteTable).upsert(_entries.map(_remotePayloadFor).toList());
+      await client
+          .from(_remoteTable)
+          .upsert(_entries.map(_remotePayloadFor).toList());
     } on PostgrestException catch (e) {
       _lastRemoteError = e.message;
       debugPrint('IngredientsProvider: bulk upsert error: ${e.message}');
@@ -321,10 +584,13 @@ class IngredientsProvider extends ChangeNotifier {
     }
   }
 
+  /// Pushes a single entry update to Supabase.
   Future<void> _pushRemoteEntry(IngredientEntry entry) async {
-    final client = _client;
+    final client = _supabaseClient;
     final userId = _currentUserId;
-    if (client == null || userId == null) return;
+    if (client == null || userId == null) {
+      return;
+    }
     try {
       await client.from(_remoteTable).upsert(_remotePayloadFor(entry));
     } on PostgrestException catch (e) {
@@ -336,12 +602,18 @@ class IngredientsProvider extends ChangeNotifier {
     }
   }
 
+  /// Deletes an ingredient from the Supabase table.
   Future<void> _deleteRemote(String name) async {
-    final client = _client;
+    final client = _supabaseClient;
     final userId = _currentUserId;
-    if (client == null || userId == null) return;
+    if (client == null || userId == null) {
+      return;
+    }
     try {
-      await client.from(_remoteTable).delete().match({'user_id': userId, 'name': name});
+      await client.from(_remoteTable).delete().match({
+        'user_id': userId,
+        'name': name,
+      });
     } on PostgrestException catch (e) {
       _lastRemoteError = e.message;
       debugPrint('IngredientsProvider: entry delete error: ${e.message}');
@@ -351,10 +623,13 @@ class IngredientsProvider extends ChangeNotifier {
     }
   }
 
+  /// Clears the remote pantry table for the current user.
   Future<void> _clearRemote() async {
-    final client = _client;
+    final client = _supabaseClient;
     final userId = _currentUserId;
-    if (client == null || userId == null) return;
+    if (client == null || userId == null) {
+      return;
+    }
     try {
       await client.from(_remoteTable).delete().eq('user_id', userId);
     } on PostgrestException catch (e) {
@@ -370,41 +645,62 @@ class IngredientsProvider extends ChangeNotifier {
     _usage[name] = (_usage[name] ?? 0) + 1;
   }
 
-  void incrementUsage(String name) { // public if UI wants to nudge ranking
+  /// Increments usage counters for ranking suggestions, respecting
+  /// normalization.
+  void incrementUsage(String name) {
+    // public if UI wants to nudge ranking
     final key = _normalizeName(name);
-    if (key.isEmpty) return;
+    if (key.isEmpty) {
+      return;
+    }
     _incrementUsageInternal(key);
     unawaited(_persist());
   }
 
-  // Public simple add returning result
-  Future<AddResult> add(String input) async { // modified to track recent
+  /// Attempts to add a new ingredient from raw input, preventing duplicates.
+  Future<AddResult> add(String input) async {
+    // modified to track recent
     final parsed = _parseIngredient(input);
-    if (parsed.name.isEmpty) return AddResult.invalid;
-    if (_isDuplicate(parsed)) return AddResult.duplicate;
+    if (parsed.name.isEmpty) {
+      return AddResult.invalid;
+    }
+    if (_isDuplicate(parsed)) {
+      return AddResult.duplicate;
+    }
     _entries.add(parsed);
     _incrementUsageInternal(parsed.name);
     _recent.remove(parsed.name); // move to front
     _recent.insert(0, parsed.name);
-    if (_recent.length > _recentCap) _recent.removeLast();
+    if (_recent.length > _recentCap) {
+      _recent.removeLast();
+    }
     notifyListeners();
     await _persist();
     unawaited(_pushRemoteEntry(parsed));
     return AddResult.added;
   }
 
-  Future<int> addMany(Iterable<String> list) async { // modified to track recent
+  /// Parses and adds a batch of raw ingredient strings, returning the count
+  /// added.
+  Future<int> addMany(Iterable<String> list) async {
+    // modified to track recent
     int added = 0;
     final List<IngredientEntry> newEntries = [];
     for (final raw in list) {
       final parsed = _parseIngredient(raw);
-      if (parsed.name.isEmpty) continue;
-      if (_isDuplicate(parsed)) continue;
+      if (parsed.name.isEmpty) {
+        continue;
+      }
+      if (_isDuplicate(parsed)) {
+        continue;
+      }
       _entries.add(parsed);
       _incrementUsageInternal(parsed.name);
       _recent.remove(parsed.name);
       _recent.insert(0, parsed.name);
-      if (_recent.length > _recentCap) _recent.removeLast();
+      if (_recent.length > _recentCap) {
+        _recent.removeLast();
+      }
       newEntries.add(parsed);
       added++;
     }
@@ -418,13 +714,24 @@ class IngredientsProvider extends ChangeNotifier {
     return added;
   }
 
+  /// Replaces an existing entry with new parsed data when the new name is
+  /// unique.
   Future<bool> replaceEntry(IngredientEntry existing, String newRaw) async {
     final idx = _entries.indexOf(existing);
-    if (idx == -1) return false;
+    if (idx == -1) {
+      return false;
+    }
     final parsed = _parseIngredient(newRaw);
-    if (parsed.name.isEmpty) return false;
+    if (parsed.name.isEmpty) {
+      return false;
+    }
     // Allow same entry name (editing) but prevent collisions with other entries
-    if (_entries.where((e)=> e != existing).any((e)=> e.name == parsed.name || _levenshtein(e.name, parsed.name) <= 2)) {
+    if (_entries
+        .where((e) => e != existing)
+        .any(
+          (e) =>
+              e.name == parsed.name || _levenshtein(e.name, parsed.name) <= 2,
+        )) {
       return false;
     }
     _entries[idx] = parsed;
@@ -437,6 +744,7 @@ class IngredientsProvider extends ChangeNotifier {
     return true;
   }
 
+  /// Removes an ingredient by its normalized name and syncs the deletion.
   Future<void> remove(String ingredientName) async {
     bool removed = false;
     _entries.removeWhere((e) {
@@ -446,33 +754,74 @@ class IngredientsProvider extends ChangeNotifier {
       }
       return false;
     });
-    if (!removed) return;
+    if (!removed) {
+      return;
+    }
     notifyListeners();
     await _persist();
     unawaited(_deleteRemote(ingredientName));
   }
 
+  /// Clears all local ingredients and propagates the change remotely.
   Future<void> clear() async {
-    if (_entries.isEmpty) return;
+    if (_entries.isEmpty) {
+      return;
+    }
     _entries.clear();
     notifyListeners();
     await _persist();
     unawaited(_clearRemote());
   }
 
+  /// Returns the stored entry matching the provided ingredient name, if any.
   IngredientEntry? entryByName(String name) {
     final key = _normalizeName(name);
-    try {return _entries.firstWhere((e)=> e.name == key);} catch (_) {return null;}
+    try {
+      return _entries.firstWhere((e) => e.name == key);
+    } catch (_) {
+      return null;
+    }
   }
 
-  // Public parse preview (non-mutating)
+  /// Parses input without mutating state, useful for previews or validation.
   IngredientEntry parsePreview(String raw) => _parseIngredient(raw);
 
   // Autocomplete suggestions (static + existing)
   static const _common = [
-    'egg','milk','butter','flour','sugar','salt','pepper','garlic','onion','tomato','olive oil','chicken','beef','pork','carrot','celery','parsley','basil','oregano','rice','pasta','lemon','lime','ginger','soy sauce','vinegar','honey','cheese','yogurt','spinach','mushroom'
+    'egg',
+    'milk',
+    'butter',
+    'flour',
+    'sugar',
+    'salt',
+    'pepper',
+    'garlic',
+    'onion',
+    'tomato',
+    'olive oil',
+    'chicken',
+    'beef',
+    'pork',
+    'carrot',
+    'celery',
+    'parsley',
+    'basil',
+    'oregano',
+    'rice',
+    'pasta',
+    'lemon',
+    'lime',
+    'ginger',
+    'soy sauce',
+    'vinegar',
+    'honey',
+    'cheese',
+    'yogurt',
+    'spinach',
+    'mushroom',
   ];
 
+  /// Produces ranked ingredient or tag suggestions for a given user query.
   List<String> suggestions(String query, {int limit = 12}) {
     final q = query.trim().toLowerCase();
 
@@ -480,48 +829,74 @@ class IngredientsProvider extends ChangeNotifier {
     if (q.startsWith('#')) {
       final tagQ = q.substring(1);
       final existingTags = <String>{};
-      for (final e in _entries) { existingTags.addAll(e.tags); }
+      for (final e in _entries) {
+        existingTags.addAll(e.tags);
+      }
       final pool = {...existingTags, ..._defaultTags};
-      final filtered = tagQ.isEmpty ? pool.toList() : pool.where((t)=> t.startsWith(tagQ) || _levenshtein(t, tagQ) <= 1).toList();
-      filtered.sort((a,b){
-        final la = _levenshtein(a, tagQ); final lb = _levenshtein(b, tagQ);
-        if (la!=lb) return la.compareTo(lb);
+      final filtered = tagQ.isEmpty
+          ? pool.toList()
+          : pool
+                .where((t) => t.startsWith(tagQ) || _levenshtein(t, tagQ) <= 1)
+                .toList();
+      filtered.sort((a, b) {
+        final la = _levenshtein(a, tagQ);
+        final lb = _levenshtein(b, tagQ);
+        if (la != lb) {
+          return la.compareTo(lb);
+        }
         return a.compareTo(b);
       });
-      return filtered.take(limit).map((t)=> '#$t').toList();
+      return filtered.take(limit).map((t) => '#$t').toList();
     }
 
     // Build candidate set
     final candidates = <String>{
       ..._common,
       ..._extended,
-      ..._entries.map((e)=>e.name),
+      ..._entries.map((e) => e.name),
       ..._synonyms.values,
       ..._recent,
-    }..removeWhere((e)=> e.isEmpty);
+    }..removeWhere((e) => e.isEmpty);
 
     if (q.isEmpty) {
       final list = candidates.toList();
-      list.sort((a,b){
-        final ua = _usage[a]??0;
-        final ub = _usage[b]??0;
-        if (ua!=ub) return ub.compareTo(ua); // usage desc
-        final ra = _recent.indexOf(a); final rb = _recent.indexOf(b);
-        if (ra!=-1 || rb!=-1) {
-          if (ra==-1) return 1; if (rb==-1) return -1; return ra.compareTo(rb); // recent earlier
+      list.sort((a, b) {
+        final ua = _usage[a] ?? 0;
+        final ub = _usage[b] ?? 0;
+        if (ua != ub) {
+          //usage desc
+          return ub.compareTo(ua);
+        }
+        final ra = _recent.indexOf(a);
+        final rb = _recent.indexOf(b);
+        if (ra != -1 || rb != -1) {
+          if (ra == -1) {
+            return 1;
+          }
+          if (rb == -1) {
+            return -1;
+          }
+          return ra.compareTo(rb); // recent earlier
         }
         return a.compareTo(b);
       });
       return list.take(limit).toList();
     }
 
-    final tokens = q.split(RegExp(r'\s+')).where((t)=>t.isNotEmpty).toList();
+    final tokens = q.split(RegExp(r'\s+')).where((t) => t.isNotEmpty).toList();
 
     // Precompute token bigrams for slight fuzzy help
     List<String> bigrams(String s) {
-      if (s.length < 2) return [s];
-      final res = <String>[]; for (int i=0;i<s.length-1;i++){res.add(s.substring(i,i+2));} return res;
+      if (s.length < 2) {
+        return [s];
+      }
+      final res = <String>[];
+      for (int i = 0; i < s.length - 1; i++) {
+        res.add(s.substring(i, i + 2));
+      }
+      return res;
     }
+
     final queryBigrams = bigrams(q);
 
     double scoreFor(String candidate) {
@@ -538,25 +913,35 @@ class IngredientsProvider extends ChangeNotifier {
             continue;
           }
           if (ct.startsWith(qt)) {
-            final closeness = 80.0 - (ct.length - qt.length)*1.5; // shorter remainder better
-            if (closeness > bestTokenScore) bestTokenScore = closeness;
+            final closeness =
+                80.0 -
+                (ct.length - qt.length) * 1.5; // shorter remainder better
+            if (closeness > bestTokenScore) {
+              bestTokenScore = closeness;
+            }
           } else if (ct.contains(qt)) {
             final idx = ct.indexOf(qt);
             final closeness = 60.0 - idx; // earlier idx better
-            if (closeness > bestTokenScore) bestTokenScore = closeness;
+            if (closeness > bestTokenScore) {
+              bestTokenScore = closeness;
+            }
           } else {
             final lev = _levenshtein(ct, qt);
             if (lev <= 2) {
-              final closeness = 50.0 - lev*8; // small edit distance
-              if (closeness > bestTokenScore) bestTokenScore = closeness;
+              final closeness = 50.0 - lev * 8; // small edit distance
+              if (closeness > bestTokenScore) {
+                bestTokenScore = closeness;
+              }
             } else {
               final qb = bigrams(qt);
               final cb = bigrams(ct);
-              final inter = qb.where((b)=> cb.contains(b)).length;
-              final denom = (qb.length + cb.length)/2.0;
+              final inter = qb.where((b) => cb.contains(b)).length;
+              final denom = (qb.length + cb.length) / 2.0;
               if (inter > 0) {
-                final sim = (inter/denom)*30.0; // up to 30
-                if (sim > bestTokenScore) bestTokenScore = sim;
+                final sim = (inter / denom) * 30.0; // up to 30
+                if (sim > bestTokenScore) {
+                  bestTokenScore = sim;
+                }
               }
             }
           }
@@ -574,41 +959,60 @@ class IngredientsProvider extends ChangeNotifier {
         score -= matchedTokens * 3.0;
       }
 
-      if (candidate.startsWith(q)) score -= 25.0; // Proximity bonus
+      if (candidate.startsWith(q)) {
+        //Proximity bonus
+        score -= 25.0;
+      }
 
       final cbAll = bigrams(candidate);
-      final interAll = queryBigrams.where((b)=> cbAll.contains(b)).length;
+      final interAll = queryBigrams.where((b) => cbAll.contains(b)).length;
       if (interAll > 0) {
         final simAll = (interAll / queryBigrams.length) * 10.0;
         score -= simAll;
       }
 
       final u = _usage[candidate] ?? 0;
-      if (u > 0) score -= (8.0 + math.log(u.toDouble()+1)*4.0);
+      if (u > 0) {
+        score -= (8.0 + math.log(u.toDouble() + 1) * 4.0);
+      }
       final rIndex = _recent.indexOf(candidate);
-      if (rIndex != -1) score -= (12.0 - rIndex); // earlier recent gets more boost
+      if (rIndex != -1)
+        score -= (12.0 - rIndex); // earlier recent gets more boost
 
       score += candidate.length * 0.4; // slight length penalty
       return score;
     }
 
-    final scored = <String,double>{};
+    final scored = <String, double>{};
     for (final c in candidates) {
       final s = scoreFor(c);
-      if (s < 260.0) { // cutoff
+      if (s < 260.0) {
+        // cutoff
         scored[c] = s;
       }
     }
     final ordered = scored.keys.toList()
-      ..sort((a,b){
-        final sa = scored[a]!; final sb = scored[b]!;
-        if (sa != sb) return sa.compareTo(sb);
-        final ua = _usage[a]??0; final ub = _usage[b]??0; 
-        if (ua!=ub) return ub.compareTo(ua); // usage desc
-        final ra = _recent.indexOf(a); final rb = _recent.indexOf(b);
-        if (ra!=-1 || rb!=-1) {
-          if (ra==-1) return 1; 
-          if (rb==-1) return -1; 
+      ..sort((a, b) {
+        final sa = scored[a]!;
+        final sb = scored[b]!;
+        if (sa != sb) {
+          return sa.compareTo(sb);
+        }
+        final ua = _usage[a] ?? 0;
+        final ub = _usage[b] ?? 0;
+        if (ua != ub) {
+          //usage desc
+          return ub.compareTo(ua);
+        }
+        final ra = _recent.indexOf(a);
+        final rb = _recent.indexOf(b);
+        if (ra != -1 || rb != -1) {
+          if (ra == -1) {
+            return 1;
+          }
+          if (rb == -1) {
+            return -1;
+          }
           return ra.compareTo(rb);
         }
         return a.compareTo(b);
@@ -616,10 +1020,14 @@ class IngredientsProvider extends ChangeNotifier {
     return ordered.take(limit).toList();
   }
 
+  /// Checks for an existing entry using exact or near-matching names.
   bool _isDuplicate(IngredientEntry entry) {
-    return _entries.any((e) => e.name == entry.name || _levenshtein(e.name, entry.name) <= 1);
+    return _entries.any(
+      (e) => e.name == entry.name || _levenshtein(e.name, entry.name) <= 1,
+    );
   }
 
+  /// Parses free-form user input into a normalized [IngredientEntry].
   IngredientEntry _parseIngredient(String raw) {
     final original = raw.trim();
     if (original.isEmpty) {
@@ -629,7 +1037,10 @@ class IngredientsProvider extends ChangeNotifier {
     // Extract tags ( #tag )
     final tagRegex = RegExp(r'(?:^|\s)#([a-zA-Z0-9_-]+)');
     final tags = <String>[];
-    working = working.replaceAllMapped(tagRegex, (m) { tags.add(m[1]!.toLowerCase()); return ''; });
+    working = working.replaceAllMapped(tagRegex, (m) {
+      tags.add(m[1]!.toLowerCase());
+      return '';
+    });
     working = working.replaceAll(RegExp(r'\s+'), ' ').trim();
 
     double? qSingle;
@@ -638,7 +1049,10 @@ class IngredientsProvider extends ChangeNotifier {
     String? unit;
 
     // Quantity range like 1-2 or 1–2 (en dash) or 1 to 2
-    final rangeRegex = RegExp(r'^([0-9]+(?:\.[0-9]+)?)[ \t]*(?:-|–|to)[ \t]*([0-9]+(?:\.[0-9]+)?)\b', caseSensitive: false);
+    final rangeRegex = RegExp(
+      r'^([0-9]+(?:\.[0-9]+)?)[ \t]*(?:-|–|to)[ \t]*([0-9]+(?:\.[0-9]+)?)\b',
+      caseSensitive: false,
+    );
     final singleRegex = RegExp(r'^([0-9]+(?:\.[0-9]+)?)(?:\b|\s)');
     var namePart = working;
 
@@ -655,8 +1069,30 @@ class IngredientsProvider extends ChangeNotifier {
       }
     }
 
-    // Optional unit as first word if alphabetical and short or common (cup, tbsp, tsp, g, kg, ml, l, oz, lb)
-    final unitRegex = RegExp(r'^(cups?|tbsp|tablespoons?|tsp|teaspoons?|g|kg|ml|l|oz|lb|pounds?|grams?|kilograms?|liters?|litres?)\b', caseSensitive: false);
+    // Optional unit as first word if alphabetical and short or common (cup,
+    // tbsp, tsp, g, kg, ml, l, oz, lb)
+    const unitParts = [
+      r'cups?',
+      r'tbsp',
+      r'tablespoons?',
+      r'tsp',
+      r'teaspoons?',
+      r'g',
+      r'kg',
+      r'ml',
+      r'l',
+      r'oz',
+      r'lb',
+      r'pounds?',
+      r'grams?',
+      r'kilograms?',
+      r'liters?',
+      r'litres?',
+    ];
+    final unitRegex = RegExp(
+      '^(${unitParts.join('|')})\\b',
+      caseSensitive: false,
+    );
     final uMatch = unitRegex.firstMatch(namePart);
     if (uMatch != null) {
       unit = uMatch.group(0)!.toLowerCase();
@@ -666,12 +1102,28 @@ class IngredientsProvider extends ChangeNotifier {
     // Normalize unit synonyms
     if (unit != null) {
       switch (unit) {
-        case 'tablespoon': case 'tablespoons': unit = 'tbsp'; break;
-        case 'teaspoon': case 'teaspoons': unit = 'tsp'; break;
-        case 'pounds': case 'pound': unit = 'lb'; break;
-        case 'grams': unit = 'g'; break;
-        case 'kilograms': unit = 'kg'; break;
-        case 'liters': case 'litres': unit = 'l'; break;
+        case 'tablespoon':
+        case 'tablespoons':
+          unit = 'tbsp';
+          break;
+        case 'teaspoon':
+        case 'teaspoons':
+          unit = 'tsp';
+          break;
+        case 'pounds':
+        case 'pound':
+          unit = 'lb';
+          break;
+        case 'grams':
+          unit = 'g';
+          break;
+        case 'kilograms':
+          unit = 'kg';
+          break;
+        case 'liters':
+        case 'litres':
+          unit = 'l';
+          break;
       }
     }
 
@@ -696,32 +1148,43 @@ class IngredientsProvider extends ChangeNotifier {
     );
   }
 
+  /// Normalizes ingredient text, handling punctuation, casing, and
+  /// pluralization.
   String _normalizeName(String s) {
     var out = s.toLowerCase();
     out = out.replaceAll(RegExp(r'[^a-z0-9\s]'), ' ');
     out = out.replaceAll(RegExp(r'\s+'), ' ').trim();
     // Improved plural handling
     String singularize(String w) {
-      if (w.length <= 3) return w; // too short
-      if (_synonyms.containsKey(w)) return w; // mapped explicitly
+      if (w.length <= 3) {
+  // Too short
+        return w;
+      }
+      if (_synonyms.containsKey(w)) {
+  // Mapped explicitly
+        return w;
+      }
       if (w.endsWith('ies') && w.length > 4) {
         // berries -> berry
         return '${w.substring(0, w.length - 3)}y';
       }
-      if (w.endsWith('oes')) { // tomatoes -> tomato (also potatoes)
+      if (w.endsWith('oes')) {
+        // tomatoes -> tomato (also potatoes)
         return w.substring(0, w.length - 2);
       }
-      const esEndings = ['ches','shes','sses','xes','zes'];
+      const esEndings = ['ches', 'shes', 'sses', 'xes', 'zes'];
       for (final e in esEndings) {
         if (w.endsWith(e)) {
           return w.substring(0, w.length - 2); // drop 'es'
         }
       }
-      // Avoid stripping 'es' from words like 'pickles' (would become 'pickl'). Only remove trailing 's'
-      // if preceding char is not 's' and not 'l'. This is a heuristic.
+  // Avoid stripping 'es' from words like 'pickles' (would become
+  // 'pickl'). Only remove trailing 's' if the preceding char is neither
+  // 's' nor 'l'. This is a heuristic.
       if (w.endsWith('s') && !w.endsWith('ss')) {
         final prev = w[w.length - 2];
-        if (prev != 'l') { // keep words ending with 'ls' (pickles, noodles) intact
+        if (prev != 'l') {
+          // keep words ending with 'ls' (pickles, noodles) intact
           return w.substring(0, w.length - 1);
         }
       }
@@ -734,10 +1197,17 @@ class IngredientsProvider extends ChangeNotifier {
     return out;
   }
 
+  /// Lightweight Levenshtein distance for fuzzy duplicate detection.
   int _levenshtein(String a, String b) {
-    if (a == b) return 0;
-    if (a.isEmpty) return b.length;
-    if (b.isEmpty) return a.length;
+    if (a == b) {
+      return 0;
+    }
+    if (a.isEmpty) {
+      return b.length;
+    }
+    if (b.isEmpty) {
+      return a.length;
+    }
     final m = a.length;
     final n = b.length;
     List<int> prev = List<int>.generate(n + 1, (i) => i);
@@ -751,12 +1221,15 @@ class IngredientsProvider extends ChangeNotifier {
         curr[j] = [
           prev[j] + 1, // deletion
           curr[j - 1] + 1, // insertion
-          prev[j - 1] + cost // substitution
+          prev[j - 1] + cost, // substitution
         ].reduce((v, e) => v < e ? v : e);
       }
-      final tmp = prev; prev = curr; curr = tmp;
+      final tmp = prev;
+      prev = curr;
+      curr = tmp;
     }
     return prev[n];
   }
 }
+
 // end of file

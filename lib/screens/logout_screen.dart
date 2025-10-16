@@ -21,14 +21,21 @@ class LogoutScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.logout, size: 72),
                 const SizedBox(height: 16),
-                Text('Sign out', style: Theme.of(context).textTheme.headlineSmall),
+                Text(
+                  'Sign out',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
                 const SizedBox(height: 8),
-                Text('This is a placeholder logout screen. No remote session handling yet.'),
+                Text(
+                  'This is a placeholder logout screen. No remote session handling yet.',
+                ),
                 const SizedBox(height: 28),
                 FilledButton.icon(
                   onPressed: () {
                     auth.logout();
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logged out (placeholder)')));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Logged out (placeholder)')),
+                    );
                     Navigator.pop(context);
                   },
                   icon: const Icon(Icons.check),

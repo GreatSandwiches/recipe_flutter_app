@@ -39,15 +39,18 @@ class CustomButton extends StatelessWidget {
           )
         : Text(label);
 
-    final styleBase = (outlined ? OutlinedButton.styleFrom : FilledButton.styleFrom)(
-      backgroundColor: outlined ? null : backgroundColor,
-      foregroundColor: outlined
-          ? Theme.of(context).colorScheme.primary
-          : (textColor ?? Theme.of(context).colorScheme.onPrimary),
-      minimumSize: Size(width ?? double.infinity, height ?? 48),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-    );
+    final styleBase =
+        (outlined ? OutlinedButton.styleFrom : FilledButton.styleFrom)(
+          backgroundColor: outlined ? null : backgroundColor,
+          foregroundColor: outlined
+              ? Theme.of(context).colorScheme.primary
+              : (textColor ?? Theme.of(context).colorScheme.onPrimary),
+          minimumSize: Size(width ?? double.infinity, height ?? 48),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        );
 
     if (outlined) {
       return OutlinedButton.icon(

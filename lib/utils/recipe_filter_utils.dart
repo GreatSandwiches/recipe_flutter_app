@@ -112,7 +112,9 @@ List<Widget> buildActiveFilterChips({
 }
 
 String _titleCase(String value) {
-  if (value.isEmpty) return value;
+  if (value.isEmpty) {
+    return value;
+  }
   return value
       .split(' ')
       .map(

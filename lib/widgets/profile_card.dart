@@ -7,7 +7,14 @@ class ProfileCard extends StatelessWidget {
   final Color? avatarColor;
   final VoidCallback? onEdit;
 
-  const ProfileCard({super.key, required this.name, this.imageUrl, this.bio, this.avatarColor, this.onEdit});
+  const ProfileCard({
+    super.key,
+    required this.name,
+    this.imageUrl,
+    this.bio,
+    this.avatarColor,
+    this.onEdit,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -35,9 +42,13 @@ class ProfileCard extends StatelessWidget {
                       width: 84,
                       height: 84,
                       decoration: BoxDecoration(
-                        color: (avatarColor ?? theme.colorScheme.primary).withValues(alpha: .15),
+                        color: (avatarColor ?? theme.colorScheme.primary)
+                            .withValues(alpha: .15),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: (avatarColor ?? theme.colorScheme.primary).withValues(alpha: .4)),
+                        border: Border.all(
+                          color: (avatarColor ?? theme.colorScheme.primary)
+                              .withValues(alpha: .4),
+                        ),
                       ),
                       child: Center(
                         child: Text(
@@ -60,7 +71,9 @@ class ProfileCard extends StatelessWidget {
                       Expanded(
                         child: Text(
                           name,
-                          style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -69,14 +82,18 @@ class ProfileCard extends StatelessWidget {
                           icon: const Icon(Icons.edit, size: 20),
                           tooltip: 'Edit profile',
                           onPressed: onEdit,
-                        )
+                        ),
                     ],
                   ),
                   if (bio != null && bio!.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Text(
                       bio!,
-                      style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.bodySmall?.color?.withValues(alpha: .8)),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodySmall?.color?.withValues(
+                          alpha: .8,
+                        ),
+                      ),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                     ),

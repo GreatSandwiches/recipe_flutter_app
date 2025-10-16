@@ -451,10 +451,9 @@ packages:
   sign_in_with_apple:
     dependency: "direct overridden"
     description:
-      name: sign_in_with_apple
-      sha256: "8bd875c8e8748272749eb6d25b896f768e7e9d60988446d543fe85a37a2392b8"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/sign_in_with_apple"
+      relative: true
+    source: path
     version: "7.0.1"
   sign_in_with_apple_platform_interface:
     dependency: transitive
@@ -680,10 +679,9 @@ packages:
   webview_flutter_wkwebview:
     dependency: "direct overridden"
     description:
-      name: webview_flutter_wkwebview
-      sha256: fb46db8216131a3e55bcf44040ca808423539bc6732e7ed34fb6d8044e3d512f
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/webview_flutter_wkwebview"
+      relative: true
+    source: path
     version: "3.23.0"
   win32:
     dependency: transitive
