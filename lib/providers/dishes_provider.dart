@@ -1,5 +1,6 @@
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -41,7 +42,8 @@ class MadeDish {
   );
 }
 
-/// Provider handling local persistence + Supabase sync of dishes a user has made.
+/// Provider handling local persistence and Supabase sync of dishes a user has
+/// made.
 ///
 /// Local persistence (per-user) allows offline viewing and optimistic updates.
 /// Remote table schema expectation (suggested):
@@ -52,7 +54,8 @@ class MadeDish {
 ///     title text not null
 ///     image text null
 ///     made_at timestamptz not null default now()
-///   Unique constraint: user_id, recipe_id keeps only the latest entry per recipe.
+///   Unique constraint: user_id, recipe_id keeps only the latest entry per
+///   recipe.
 class DishesProvider extends ChangeNotifier {
   static const _baseKey = 'dishes_made_v1';
   String? _currentUserId; // null for anon
@@ -88,12 +91,16 @@ class DishesProvider extends ChangeNotifier {
   }
 
   Future<void> load() async {
-    if (_loaded) return;
+    if (_loaded) {
+      return;
+    }
     await _loadFor(_currentUserId);
   }
 
   Future<void> switchUser(String? userId) async {
-    if (_currentUserId == userId) return;
+    if (_currentUserId == userId) {
+      return;
+    }
     if (_loaded) {
       await _persist();
     }
@@ -115,7 +122,8 @@ class DishesProvider extends ChangeNotifier {
       return;
     }
     final existingIndex = _dishes.indexWhere((d) => d.recipeId == recipeId);
-    // For now, only one record per recipe. If want multiples, remove this block.
+    // For now, only one record per recipe. If you want multiples, remove this
+    // block.
     if (existingIndex != -1) {
       // move to top / update timestamp
       final existing = _dishes[existingIndex];
@@ -186,7 +194,9 @@ class DishesProvider extends ChangeNotifier {
   }
 
   Future<void> _persist() async {
-    if (!_loaded) return;
+    if (!_loaded) {
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _storageKey(_currentUserId),
@@ -274,7 +284,9 @@ class DishesProvider extends ChangeNotifier {
 
   Future<void> _pushRemoteSingle(int recipeId) async {
     final client = _client;
-    if (client == null || _currentUserId == null) return;
+    if (client == null || _currentUserId == null) {
+      return;
+    }
     final dishIndex = _dishes.indexWhere((d) => d.recipeId == recipeId);
     if (dishIndex == -1) {
       return;
@@ -291,7 +303,9 @@ class DishesProvider extends ChangeNotifier {
 
   Future<void> _deleteRemote(int recipeId) async {
     final client = _client;
-    if (client == null || _currentUserId == null) return;
+    if (client == null || _currentUserId == null) {
+      return;
+    }
     try {
       await client.from('dishes_made').delete().match({
         'user_id': _currentUserId,
@@ -302,8 +316,12 @@ class DishesProvider extends ChangeNotifier {
 
   Future<void> _pushAllRemote() async {
     final client = _client;
-    if (client == null || _currentUserId == null) return;
-    if (_dishes.isEmpty) return;
+    if (client == null || _currentUserId == null) {
+      return;
+    }
+    if (_dishes.isEmpty) {
+      return;
+    }
     try {
       await client
           .from('dishes_made')

@@ -87,7 +87,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   bool _handleKey(KeyEvent e, IngredientsProvider provider) {
-    if (e is! KeyDownEvent) return false;
+    if (e is! KeyDownEvent) {
+      return false;
+    }
     final key = e.logicalKey;
     if (_isKeywordMode) {
       if (key == LogicalKeyboardKey.enter ||
@@ -113,7 +115,9 @@ class _HomeScreenState extends State<HomeScreen> {
       if (_suggestions.isNotEmpty) {
         setState(() {
           _highlightIndex = (_highlightIndex - 1);
-          if (_highlightIndex < 0) _highlightIndex = _suggestions.length - 1;
+          if (_highlightIndex < 0) {
+            _highlightIndex = _suggestions.length - 1;
+          }
         });
         return true;
       }
@@ -155,14 +159,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _submitInput(IngredientsProvider provider) async {
     final raw = _controller.text.trim();
-    if (raw.isEmpty) return;
+    if (raw.isEmpty) {
+      return;
+    }
     final parts = raw
         .split(RegExp(r'[\n,;]'))
         .map((e) => e.trim())
         .where((e) => e.isNotEmpty);
     _controller.clear();
     final count = await provider.addMany(parts);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     if (count == 0) {
       ScaffoldMessenger.of(
         context,
@@ -189,7 +197,9 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     _controller.clear();
     _updateSuggestions(provider);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     FocusScope.of(context).unfocus();
     await Navigator.push(
       context,
@@ -205,7 +215,9 @@ class _HomeScreenState extends State<HomeScreen> {
     String ingredient,
   ) async {
     await provider.remove(ingredient);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Removed $ingredient'),
@@ -239,7 +251,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     if (ok == true) {
       await provider.clear();
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Ingredients cleared')));
@@ -386,7 +400,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         final next = index == 0
                             ? _InputMode.ingredients
                             : _InputMode.keyword;
-                        if (next == _inputMode) return;
+                        if (next == _inputMode) {
+                          return;
+                        }
                         setState(() {
                           _inputMode = next;
                           _highlightIndex = -1;

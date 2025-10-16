@@ -51,7 +51,10 @@ class ProfileScreen extends StatelessWidget {
                   children: [
                     const Icon(Icons.edit),
                     const SizedBox(width: 8),
-                    Text('Edit Profile', style: Theme.of(ctx).textTheme.titleLarge),
+                    Text(
+                      'Edit Profile',
+                      style: Theme.of(ctx).textTheme.titleLarge,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -67,7 +70,10 @@ class ProfileScreen extends StatelessWidget {
                   decoration: const InputDecoration(labelText: 'Bio'),
                 ),
                 const SizedBox(height: 16),
-                Text('Avatar colour', style: Theme.of(ctx).textTheme.labelLarge),
+                Text(
+                  'Avatar colour',
+                  style: Theme.of(ctx).textTheme.labelLarge,
+                ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 10,
@@ -84,7 +90,9 @@ class ProfileScreen extends StatelessWidget {
                             color: c,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: selectedColor == c ? Colors.black87 : Colors.white,
+                              color: selectedColor == c
+                                  ? Colors.black87
+                                  : Colors.white,
                               width: selectedColor == c ? 2 : 1,
                             ),
                             boxShadow: [
@@ -92,7 +100,7 @@ class ProfileScreen extends StatelessWidget {
                                 const BoxShadow(
                                   color: Colors.black26,
                                   blurRadius: 4,
-                                  offset: Offset(0,2),
+                                  offset: Offset(0, 2),
                                 ),
                             ],
                           ),
@@ -142,7 +150,12 @@ class ProfileScreen extends StatelessWidget {
     final theme = Theme.of(context);
     return Column(
       children: [
-        Text(value, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600)),
+        Text(
+          value,
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         const SizedBox(height: 4),
         Text(label, style: theme.textTheme.bodySmall),
       ],
@@ -178,8 +191,16 @@ class ProfileScreen extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _stat('Favourites', favs.favourites.length.toString(), context),
-                        _stat('Dishes Made', dishes.totalCount.toString(), context),
+                        _stat(
+                          'Favourites',
+                          favs.favourites.length.toString(),
+                          context,
+                        ),
+                        _stat(
+                          'Dishes Made',
+                          dishes.totalCount.toString(),
+                          context,
+                        ),
                         _stat('Followers', '5', context), // placeholder
                       ],
                     ),
@@ -191,9 +212,16 @@ class ProfileScreen extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(20, 28, 20, 8),
                       child: Row(
                         children: [
-                          const Icon(Icons.favorite, size: 20, color: Colors.redAccent),
+                          const Icon(
+                            Icons.favorite,
+                            size: 20,
+                            color: Colors.redAccent,
+                          ),
                           const SizedBox(width: 8),
-                          Text('Recent Favourites', style: Theme.of(context).textTheme.titleMedium),
+                          Text(
+                            'Recent Favourites',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
                         ],
                       ),
                     ),
@@ -222,7 +250,9 @@ class ProfileScreen extends StatelessWidget {
                               child: Card(
                                 clipBehavior: Clip.antiAlias,
                                 elevation: 3,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -232,14 +262,19 @@ class ProfileScreen extends StatelessWidget {
                                               r.image!,
                                               width: double.infinity,
                                               fit: BoxFit.cover,
-                                              errorBuilder: (_, __, ___) => Container(
-                                                color: Colors.grey[300],
-                                                child: const Icon(Icons.restaurant),
-                                              ),
+                                              errorBuilder: (_, __, ___) =>
+                                                  Container(
+                                                    color: Colors.grey[300],
+                                                    child: const Icon(
+                                                      Icons.restaurant,
+                                                    ),
+                                                  ),
                                             )
                                           : Container(
                                               color: Colors.grey[300],
-                                              child: const Center(child: Icon(Icons.restaurant)),
+                                              child: const Center(
+                                                child: Icon(Icons.restaurant),
+                                              ),
                                             ),
                                     ),
                                     Padding(
@@ -248,7 +283,10 @@ class ProfileScreen extends StatelessWidget {
                                         r.title,
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -268,9 +306,16 @@ class ProfileScreen extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(20, 28, 20, 8),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle, size: 20, color: Colors.green),
+                          const Icon(
+                            Icons.check_circle,
+                            size: 20,
+                            color: Colors.green,
+                          ),
                           const SizedBox(width: 8),
-                          Text('Recently Cooked', style: Theme.of(context).textTheme.titleMedium),
+                          Text(
+                            'Recently Cooked',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
                         ],
                       ),
                     ),
@@ -284,7 +329,8 @@ class ProfileScreen extends StatelessWidget {
                         scrollDirection: Axis.horizontal,
                         itemBuilder: (ctx, i) {
                           final dish = recentDishes[i];
-                          final lastMade = '${dish.madeAt.day}/${dish.madeAt.month}/${dish.madeAt.year}';
+                          final lastMade =
+                              '${dish.madeAt.day}/${dish.madeAt.month}/${dish.madeAt.year}';
                           return GestureDetector(
                             onTap: () => Navigator.push(
                               context,
@@ -300,7 +346,9 @@ class ProfileScreen extends StatelessWidget {
                               child: Card(
                                 clipBehavior: Clip.antiAlias,
                                 elevation: 3,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
@@ -310,31 +358,45 @@ class ProfileScreen extends StatelessWidget {
                                               dish.image!,
                                               width: double.infinity,
                                               fit: BoxFit.cover,
-                                              errorBuilder: (_, __, ___) => Container(
-                                                color: Colors.grey[300],
-                                                child: const Icon(Icons.restaurant),
-                                              ),
+                                              errorBuilder: (_, __, ___) =>
+                                                  Container(
+                                                    color: Colors.grey[300],
+                                                    child: const Icon(
+                                                      Icons.restaurant,
+                                                    ),
+                                                  ),
                                             )
                                           : Container(
                                               color: Colors.grey[300],
-                                              child: const Center(child: Icon(Icons.restaurant_menu)),
+                                              child: const Center(
+                                                child: Icon(
+                                                  Icons.restaurant_menu,
+                                                ),
+                                              ),
                                             ),
                                     ),
                                     Padding(
                                       padding: const EdgeInsets.all(8),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             dish.title,
                                             maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                           ),
                                           const SizedBox(height: 4),
                                           Text(
                                             'Last: $lastMade',
-                                            style: TextStyle(fontSize: 10, color: Colors.grey[600]),
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: Colors.grey[600],
+                                            ),
                                           ),
                                         ],
                                       ),
@@ -352,7 +414,10 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 24,
+                    ),
                     child: Column(
                       children: [
                         SizedBox(
@@ -378,13 +443,20 @@ class ProfileScreen extends StatelessWidget {
                         SizedBox(
                           width: double.infinity,
                           child: OutlinedButton.icon(
-                            icon: Icon(auth.isLoggedIn ? Icons.logout : Icons.login),
+                            icon: Icon(
+                              auth.isLoggedIn ? Icons.logout : Icons.login,
+                            ),
                             label: Text(auth.isLoggedIn ? 'Logout' : 'Login'),
                             onPressed: () {
                               if (auth.isLoggedIn) {
                                 auth.logout();
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logged out')));
-                                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Logged out')),
+                                );
+                                Navigator.of(context).pushNamedAndRemoveUntil(
+                                  '/login',
+                                  (route) => false,
+                                );
                               } else {
                                 Navigator.pushNamed(context, '/login');
                               }

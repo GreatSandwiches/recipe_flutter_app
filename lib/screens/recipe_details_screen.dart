@@ -664,10 +664,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 0,
-        color: Theme.of(context)
-            .colorScheme
-            .surfaceContainerHighest
-            .withValues(alpha: 0.35),
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.35),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           child: LayoutBuilder(
@@ -851,7 +850,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
     final macros = <_MacroData>[];
     pairs.forEach((label, raw) {
       final parts = _amountParts(raw);
-      if (parts == null || parts.value <= 0) return;
+      if (parts == null || parts.value <= 0) {
+        return;
+      }
       macros.add(
         _MacroData(
           label: label,
@@ -866,14 +867,22 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
 
   List<_DailyNeedItem> _topDailyNeeds(dynamic source) {
-    if (source is! List) return <_DailyNeedItem>[];
+    if (source is! List) {
+      return <_DailyNeedItem>[];
+    }
     final items = <_DailyNeedItem>[];
     for (final entry in source) {
-      if (entry is! Map<String, dynamic>) continue;
+      if (entry is! Map<String, dynamic>) {
+        continue;
+      }
       final percent = _asDouble(entry['percentOfDailyNeeds']);
-      if (percent == null || percent <= 0) continue;
+      if (percent == null || percent <= 0) {
+        continue;
+      }
       final title = entry['title']?.toString();
-      if (title == null || title.isEmpty) continue;
+      if (title == null || title.isEmpty) {
+        continue;
+      }
       final amount = entry['amount']?.toString() ?? '';
       items.add(_DailyNeedItem(title: title, amount: amount, percent: percent));
     }
@@ -883,14 +892,22 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
 
   List<_CostIngredient> _extractCostIngredients(Map<String, dynamic> data) {
     final rawIngredients = data['ingredients'];
-    if (rawIngredients is! List) return <_CostIngredient>[];
+    if (rawIngredients is! List) {
+      return <_CostIngredient>[];
+    }
     final results = <_CostIngredient>[];
     for (final entry in rawIngredients) {
-      if (entry is! Map<String, dynamic>) continue;
+      if (entry is! Map<String, dynamic>) {
+        continue;
+      }
       final name = entry['name']?.toString();
-      if (name == null || name.isEmpty) continue;
+      if (name == null || name.isEmpty) {
+        continue;
+      }
       final price = _asDouble(entry['price']);
-      if (price == null || price <= 0) continue;
+      if (price == null || price <= 0) {
+        continue;
+      }
       final amount = _formatIngredientAmount(entry['amount']);
       results.add(_CostIngredient(name: name, price: price, amount: amount));
     }
@@ -899,7 +916,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
 
   _AmountParts? _amountParts(dynamic raw) {
-    if (raw == null) return null;
+    if (raw == null) {
+      return null;
+    }
     if (raw is num) {
       return _AmountParts(raw.toDouble(), '');
     }
@@ -907,7 +926,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       final match = RegExp(r'(\d+(?:\.\d+)?)').firstMatch(raw);
       if (match != null) {
         final value = double.tryParse(match.group(1)!);
-        if (value == null) return null;
+        if (value == null) {
+          return null;
+        }
         final unit = raw.replaceFirst(match.group(0)!, '').trim();
         return _AmountParts(value, unit);
       }
@@ -916,22 +937,38 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
   }
 
   double? _asDouble(dynamic value) {
-    if (value == null) return null;
-    if (value is num) return value.toDouble();
-    if (value is String) return double.tryParse(value);
+    if (value == null) {
+      return null;
+    }
+    if (value is num) {
+      return value.toDouble();
+    }
+    if (value is String) {
+      return double.tryParse(value);
+    }
     return null;
   }
 
   int? _asInt(dynamic value) {
-    if (value == null) return null;
-    if (value is int) return value;
-    if (value is num) return value.toInt();
-    if (value is String) return int.tryParse(value);
+    if (value == null) {
+      return null;
+    }
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.toInt();
+    }
+    if (value is String) {
+      return int.tryParse(value);
+    }
     return null;
   }
 
   String _formatCost(double? cents) {
-    if (cents == null) return 'N/A';
+    if (cents == null) {
+      return 'N/A';
+    }
     final dollars = cents / 100;
     return '\$${dollars.toStringAsFixed(2)}';
   }
@@ -955,7 +992,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
 
   void _openAiOverlay() {
     final recipe = _recipeData;
-    if (recipe == null) return;
+    if (recipe == null) {
+      return;
+    }
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1109,7 +1148,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                 : () async {
                     sheetSetState(() {
                       _loadingSummary = true;
-                      if (_aiSummary == null) _aiTabIndex = 0;
+                      if (_aiSummary == null) {
+                        _aiTabIndex = 0;
+                      }
                     });
                     try {
                       _aiSummary = await AiService.recipeSummary(recipe);
@@ -1157,7 +1198,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                 : () async {
                     sheetSetState(() {
                       _loadingSubs = true;
-                      if (_aiSubs == null) _aiTabIndex = 1;
+                      if (_aiSubs == null) {
+                        _aiTabIndex = 1;
+                      }
                     });
                     try {
                       _aiSubs = await AiService.ingredientSubstitutions(recipe);
@@ -1213,7 +1256,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
               ? null
               : () async {
                   final q = _questionCtrl.text.trim();
-                  if (q.isEmpty) return;
+                  if (q.isEmpty) {
+                    return;
+                  }
                   sheetSetState(() {
                     _asking = true;
                     _answer = null;
@@ -1304,10 +1349,14 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       highlightColor: Colors.transparent,
       onTap: () async {
         final data = _recipeData;
-        if (data == null) return;
+        if (data == null) {
+          return;
+        }
         if (isMade) {
           await dishes.remove(widget.recipeId);
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Removed from Dishes Made')),
           );
@@ -1317,7 +1366,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
             title: widget.recipeName,
             image: data['image'],
           );
-          if (!mounted) return;
+          if (!mounted) {
+            return;
+          }
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('Marked as made!')));
@@ -1405,7 +1456,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
 
   List<Widget> _buildInstructionsList() {
     final instructions = _recipeData!['analyzedInstructions'] as List;
-    if (instructions.isEmpty) return [];
+    if (instructions.isEmpty) {
+      return [];
+    }
 
     final steps = instructions[0]['steps'] as List;
     return steps.asMap().entries.map<Widget>((entry) {

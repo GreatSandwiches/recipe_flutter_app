@@ -23,13 +23,17 @@ class SettingsScreen extends StatelessWidget {
           const _SectionHeader(label: 'Appearance'),
           SwitchListTile(
             title: const Text('Dark Mode'),
-            subtitle: Text(settings.darkMode ? 'Dark theme enabled' : 'Light theme enabled'),
+            subtitle: Text(
+              settings.darkMode ? 'Dark theme enabled' : 'Light theme enabled',
+            ),
             value: settings.darkMode,
             onChanged: (v) async {
               await settings.setDarkMode(v);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Theme changed to ${v ? 'Dark' : 'Light'}')),
+                  SnackBar(
+                    content: Text('Theme changed to ${v ? 'Dark' : 'Light'}'),
+                  ),
                 );
               }
             },
@@ -38,11 +42,17 @@ class SettingsScreen extends StatelessWidget {
           const _SectionHeader(label: 'Preferences'),
           ListTile(
             title: const Text('Measurement Units'),
-            subtitle: Text(settings.units == 'metric' ? 'Metric (g, ml, °C)' : 'US Customary (oz, cups, °F)'),
+            subtitle: Text(
+              settings.units == 'metric'
+                  ? 'Metric (g, ml, °C)'
+                  : 'US Customary (oz, cups, °F)',
+            ),
             trailing: DropdownButton<String>(
               value: settings.units,
               onChanged: (val) async {
-                if (val != null) await settings.setUnits(val);
+                if (val != null) {
+                  await settings.setUnits(val);
+                }
               },
               items: const [
                 DropdownMenuItem(value: 'metric', child: Text('Metric')),
@@ -59,7 +69,11 @@ class SettingsScreen extends StatelessWidget {
               await settings.setNotifications(v);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Notifications ${v ? 'enabled' : 'disabled'}')),
+                  SnackBar(
+                    content: Text(
+                      'Notifications ${v ? 'enabled' : 'disabled'}',
+                    ),
+                  ),
                 );
               }
             },
@@ -79,9 +93,14 @@ class SettingsScreen extends StatelessWidget {
                 context: context,
                 builder: (c) => AlertDialog(
                   title: const Text('Privacy Policy'),
-                  content: const Text('Placeholder privacy policy. Replace with actual content.'),
+                  content: const Text(
+                    'Placeholder privacy policy. Replace with actual content.',
+                  ),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(c), child: const Text('Close')),
+                    TextButton(
+                      onPressed: () => Navigator.pop(c),
+                      child: const Text('Close'),
+                    ),
                   ],
                 ),
               );
@@ -90,7 +109,11 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.description_outlined),
             title: const Text('Licenses'),
-            onTap: () => showLicensePage(context: context, applicationName: 'Recipe App', applicationVersion: settings.appVersion),
+            onTap: () => showLicensePage(
+              context: context,
+              applicationName: 'Recipe App',
+              applicationVersion: settings.appVersion,
+            ),
           ),
           const _SectionHeader(label: 'Danger Zone'),
           ListTile(
@@ -102,10 +125,18 @@ class SettingsScreen extends StatelessWidget {
                 context: context,
                 builder: (c) => AlertDialog(
                   title: const Text('Reset Settings'),
-                  content: const Text('This will restore defaults for theme, notifications and units.'),
+                  content: const Text(
+                    'This will restore defaults for theme, notifications and units.',
+                  ),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
-                    FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Reset')),
+                    TextButton(
+                      onPressed: () => Navigator.pop(c, false),
+                      child: const Text('Cancel'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(c, true),
+                      child: const Text('Reset'),
+                    ),
                   ],
                 ),
               );
@@ -114,7 +145,9 @@ class SettingsScreen extends StatelessWidget {
                 await settings.setNotifications(true);
                 await settings.setUnits('metric');
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settings reset to defaults')));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Settings reset to defaults')),
+                  );
                 }
               }
             },
@@ -135,10 +168,10 @@ class _SectionHeader extends StatelessWidget {
       child: Text(
         label.toUpperCase(),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              letterSpacing: 1.1,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+          letterSpacing: 1.1,
+          fontWeight: FontWeight.w600,
+          color: Theme.of(context).colorScheme.primary,
+        ),
       ),
     );
   }

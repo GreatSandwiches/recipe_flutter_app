@@ -1,32 +1,37 @@
+import 'dart:developer' as dev;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'providers/favourites_provider.dart';
-import 'providers/profile_provider.dart';
-import 'providers/settings_provider.dart';
-import 'providers/ingredients_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
+
 import 'providers/auth_provider.dart';
 import 'providers/dishes_provider.dart';
-import 'screens/home_screen.dart';
-import 'screens/favourites_screen.dart';
+import 'providers/favourites_provider.dart';
+import 'providers/ingredients_provider.dart';
+import 'providers/profile_provider.dart';
+import 'providers/settings_provider.dart';
 import 'screens/explore_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/settings_screen.dart';
+import 'screens/favourites_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/logout_screen.dart';
+import 'screens/profile_screen.dart';
 import 'screens/profile_setup_screen.dart';
+import 'screens/settings_screen.dart';
 import 'theme/app_theme.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' as sb;
-import 'dart:developer' as dev;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  GoogleFonts.config.allowRuntimeFetching = false;
   await dotenv.load(fileName: ".env");
   final supabaseUrl = dotenv.env['SUPABASE_URL'];
   final supabaseAnon = dotenv.env['SUPABASE_ANON_KEY'];
   if (supabaseUrl == null || supabaseAnon == null) {
     dev.log(
-      'Supabase env vars missing (SUPABASE_URL / SUPABASE_ANON_KEY). Auth will fail.',
+      'Supabase env vars missing (SUPABASE_URL / SUPABASE_ANON_KEY). '
+      'Auth will fail.',
       name: 'bootstrap',
     );
   } else {

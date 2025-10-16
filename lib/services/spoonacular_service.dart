@@ -19,9 +19,7 @@ class SpoonacularService {
 
   static String _requireApiKey() {
     if (_isInvalidKey(_apiKey)) {
-      throw Exception(
-        'Spoonacular API key not configured.',
-      );
+      throw Exception('Spoonacular API key not configured.');
     }
     return _apiKey!;
   }
@@ -113,7 +111,9 @@ class SpoonacularService {
           num value => value.toInt(),
           _ => null,
         };
-        if (id == null || combined.containsKey(id)) continue;
+        if (id == null || combined.containsKey(id)) {
+          continue;
+        }
         combined[id] = item;
       }
     }
@@ -301,13 +301,19 @@ class SpoonacularService {
         (m['readyInMinutes'] as num?)?.toInt() ?? 0;
 
     final usedDiff = getUsed(b) - getUsed(a);
-    if (usedDiff != 0) return usedDiff;
+    if (usedDiff != 0) {
+      return usedDiff;
+    }
 
     final missedDiff = getMissed(a) - getMissed(b);
-    if (missedDiff != 0) return missedDiff;
+    if (missedDiff != 0) {
+      return missedDiff;
+    }
 
     final readyDiff = getReady(a) - getReady(b);
-    if (readyDiff != 0) return readyDiff;
+    if (readyDiff != 0) {
+      return readyDiff;
+    }
 
     final titleA = (a['title'] as String?) ?? '';
     final titleB = (b['title'] as String?) ?? '';

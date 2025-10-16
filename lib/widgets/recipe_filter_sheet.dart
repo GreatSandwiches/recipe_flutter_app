@@ -359,7 +359,9 @@ class _RecipeFiltersSheetState extends State<_RecipeFiltersSheet> {
                             )
                             .toList(),
                         onChanged: (value) {
-                          if (value == null) return;
+                          if (value == null) {
+                            return;
+                          }
                           setState(() {
                             _sort = value;
                             _sortDirection = value == 'time' ? 'asc' : 'desc';
@@ -384,7 +386,9 @@ class _RecipeFiltersSheetState extends State<_RecipeFiltersSheet> {
                               ),
                             ],
                             onChanged: (value) {
-                              if (value == null) return;
+                              if (value == null) {
+                                return;
+                              }
                               setState(() {
                                 _sortDirection = value;
                               });
