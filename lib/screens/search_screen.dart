@@ -388,10 +388,12 @@ class _SearchScreenState extends State<SearchScreen> {
     if (recipe['vegan'] == true) {
       facts.add(Text('Vegan', style: style));
     }
-    if (recipe['vegetarian'] == true)
+    if (recipe['vegetarian'] == true) {
       facts.add(Text('Vegetarian', style: style));
-    if (recipe['glutenFree'] == true)
+    }
+    if (recipe['glutenFree'] == true) {
       facts.add(Text('Gluten free', style: style));
+    }
     return facts;
   }
 

@@ -2,8 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-@import XCTest;
-@import os.log;
+#if __has_include(<XCTest/XCTest.h>)
+#import <XCTest/XCTest.h>
+#else
+#import <Foundation/Foundation.h>
+@interface XCTestCase : NSObject
+@end
+
+@implementation XCTestCase
+@end
+#endif
+
+#if __has_include(<UIKit/UIKit.h>) && __has_include(<CoreGraphics/CoreGraphics.h>) &&              \
+    __has_include(<CoreFoundation/CoreFoundation.h>) && __has_include(<os/log.h>)
+#import <CoreFoundation/CoreFoundation.h>
+#import <CoreGraphics/CoreGraphics.h>
+#import <UIKit/UIKit.h>
+#import <os/log.h>
 
 static UIColor *getPixelColorInImage(CGImageRef image, size_t x, size_t y) {
   CFDataRef pixelData = CGDataProviderCopyData(CGImageGetDataProvider(image));
@@ -87,3 +102,13 @@ static UIColor *getPixelColorInImage(CGImageRef image, size_t x, size_t y) {
   XCTAssertTrue(CGColorEqualToColor(redColor, centerColor.CGColor));
 }
 @end
+
+#else
+
+@interface FLTWebViewUITests : XCTestCase
+@end
+
+@implementation FLTWebViewUITests
+@end
+
+#endif

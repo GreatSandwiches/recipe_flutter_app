@@ -976,8 +976,9 @@ class IngredientsProvider extends ChangeNotifier {
         score -= (8.0 + math.log(u.toDouble() + 1) * 4.0);
       }
       final rIndex = _recent.indexOf(candidate);
-      if (rIndex != -1)
+      if (rIndex != -1) {
         score -= (12.0 - rIndex); // earlier recent gets more boost
+      }
 
       score += candidate.length * 0.4; // slight length penalty
       return score;
