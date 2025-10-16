@@ -35,7 +35,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       title: '30 Min Meals',
       subtitle: 'Dinner on the table in under half an hour.',
       icon: Icons.timer,
-      options: const RecipeSearchOptions(
+      options: RecipeSearchOptions(
         maxReadyTime: 30,
         sort: 'time',
         sortDirection: 'asc',
@@ -51,7 +51,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       title: 'High Protein',
       subtitle: 'Fuel up with 25g+ of protein per serving.',
       icon: Icons.fitness_center,
-      options: const RecipeSearchOptions(
+      options: RecipeSearchOptions(
         numericFilters: {'minProtein': 25},
         sort: 'protein',
         sortDirection: 'desc',
@@ -68,7 +68,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       title: 'Veggie Comfort',
       subtitle: 'Hearty vegetarian mains everyone will love.',
       icon: Icons.spa,
-      options: const RecipeSearchOptions(
+      options: RecipeSearchOptions(
         diets: ['vegetarian'],
         mealTypes: ['main course'],
         sort: 'popularity',
@@ -85,7 +85,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
       title: 'Low Carb',
       subtitle: 'Smart picks with under 25g carbs.',
       icon: Icons.local_fire_department,
-      options: const RecipeSearchOptions(
+      options: RecipeSearchOptions(
         numericFilters: {'maxCarbs': 25, 'maxCalories': 600},
         sort: 'healthiness',
         sortDirection: 'desc',
@@ -112,7 +112,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Future<void> _loadCategory(int index, {bool forceRefresh = false}) async {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     // Update selection immediately for visual feedback.
     if (_selectedCategory != index) {
@@ -143,7 +145,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
         final recipes = await SpoonacularService.getRandomRecipes(
           category.pageSize,
         );
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         _featuredRecipes = List<Map<String, dynamic>>.from(recipes);
         _categoryResults[index] = _featuredRecipes;
         _categoryMeta.remove(index);
@@ -154,7 +158,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
           number: category.pageSize,
         );
         final response = await SpoonacularService.complexSearch(request);
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         _featuredRecipes = List<Map<String, dynamic>>.from(response.results);
         _categoryResults[index] = _featuredRecipes;
         _categoryMeta[index] = response;
@@ -168,7 +174,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
       _refineRecipeTimesFor(_featuredRecipes);
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _isLoading = false;
         _errorMessage = e.toString();
@@ -188,7 +196,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Future<void> _maybeLoadMore() async {
-    if (_isLoading || _isLoadingMore) return;
+    if (_isLoading || _isLoadingMore) {
+      return;
+    }
 
     final category = _categories[_selectedCategory];
 
@@ -218,7 +228,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
     });
     try {
       final newRecipes = await SpoonacularService.getRandomRecipes(count);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       final existingIds = _featuredRecipes.map((e) => e['id']).toSet();
       final filtered = newRecipes
           .where((recipe) => !existingIds.contains(recipe['id']))
@@ -254,7 +266,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
       final response = await SpoonacularService.complexSearch(
         category.options!.copyWith(offset: offset, number: category.pageSize),
       );
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
 
       final existing = List<Map<String, dynamic>>.from(
         _categoryResults[_selectedCategory] ?? [],
@@ -295,7 +309,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   Future<void> _refineRecipeTimesFor(List<Map<String, dynamic>> subset) async {
-    if (_refiningTimes || subset.isEmpty) return;
+    if (_refiningTimes || subset.isEmpty) {
+      return;
+    }
     _refiningTimes = true;
     try {
       final candidates = subset
@@ -310,7 +326,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
           );
           final better = deriveReadyInMinutes(details);
           if (better != null && better != recipe['readyInMinutes']) {
-            if (!mounted) return;
+            if (!mounted) {
+              return;
+            }
             setState(() {
               recipe['readyInMinutes'] = better;
             });
@@ -318,7 +336,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
         } catch (_) {
           // ignore individual failures
         }
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
       }
     } finally {
       _refiningTimes = false;

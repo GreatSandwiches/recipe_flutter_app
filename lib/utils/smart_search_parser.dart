@@ -1,4 +1,3 @@
-import 'dart:collection';
 import 'dart:math' as math;
 
 import '../models/recipe_search_options.dart';
@@ -31,12 +30,15 @@ class SmartSearchParser {
     // Time-based cues ("under 30 minutes", "ready in 20 min", "30-minute")
     removeMatches(
       RegExp(
-        r'\b(?:under|less than|within)\s+(\d{1,3})\s*(hours?|hrs?|minutes?|mins?|h|m)\b',
+        r'\b(?:under|less than|within)\s+(\d{1,3})\s*'
+        r'(hours?|hrs?|minutes?|mins?|h|m)\b',
         caseSensitive: false,
       ),
       (match) {
         final amount = int.tryParse(match.group(1) ?? '');
-        if (amount == null) return;
+        if (amount == null) {
+          return;
+        }
         final unit = (match.group(2) ?? '').toLowerCase();
         final minutes = unit.startsWith('h') ? amount * 60 : amount;
         state.setMaxReadyTime(minutes);
@@ -45,12 +47,15 @@ class SmartSearchParser {
 
     removeMatches(
       RegExp(
-        r'\bready\s+in\s+(\d{1,3})\s*(hours?|hrs?|minutes?|mins?|h|m)\b',
+        r'\bready\s+in\s+(\d{1,3})\s*'
+        r'(hours?|hrs?|minutes?|mins?|h|m)\b',
         caseSensitive: false,
       ),
       (match) {
         final amount = int.tryParse(match.group(1) ?? '');
-        if (amount == null) return;
+        if (amount == null) {
+          return;
+        }
         final unit = (match.group(2) ?? '').toLowerCase();
         final minutes = unit.startsWith('h') ? amount * 60 : amount;
         state.setMaxReadyTime(minutes);
@@ -59,12 +64,16 @@ class SmartSearchParser {
 
     removeMatches(
       RegExp(
-        r'\b(\d{1,3})\s*[- ]?(?:minute|min)\b(?:\s*(?:meal|meals|recipe|recipes|dinner|dinners|lunch|lunches|breakfast|dessert|snack|snacks))?',
+        r'\b(\d{1,3})\s*[- ]?(?:minute|min)\b'
+        r'(?:\s*(?:meal|meals|recipe|recipes|dinner|dinners|lunch|'
+        r'lunches|breakfast|dessert|snack|snacks))?',
         caseSensitive: false,
       ),
       (match) {
         final amount = int.tryParse(match.group(1) ?? '');
-        if (amount == null) return;
+        if (amount == null) {
+          return;
+        }
         state.setMaxReadyTime(amount);
       },
     );
@@ -73,7 +82,9 @@ class SmartSearchParser {
       RegExp(r'\b(\d{1,2})\s*[- ]?(?:hour|hr)\b', caseSensitive: false),
       (match) {
         final amount = int.tryParse(match.group(1) ?? '');
-        if (amount == null) return;
+        if (amount == null) {
+          return;
+        }
         state.setMaxReadyTime(amount * 60);
       },
     );
@@ -94,7 +105,8 @@ class SmartSearchParser {
 
     removeMatches(
       RegExp(
-        r'\b(?:\d{2,4})\s*(?:calorie|calories|kcal)\s*(?:meal|recipe|option|ideas?)\b',
+        r'\b(?:\d{2,4})\s*(?:calorie|calories|kcal)\s*'
+        r'(?:meal|recipe|option|ideas?)\b',
         caseSensitive: false,
       ),
       (match) {
@@ -442,11 +454,11 @@ class _SmartSearchState {
   _SmartSearchState({required this.original});
 
   final String original;
-  final Set<String> diets = LinkedHashSet();
-  final Set<String> intolerances = LinkedHashSet();
-  final Set<String> mealTypes = LinkedHashSet();
-  final Set<String> cuisines = LinkedHashSet();
-  final Set<String> equipment = LinkedHashSet();
+  final Set<String> diets = <String>{};
+  final Set<String> intolerances = <String>{};
+  final Set<String> mealTypes = <String>{};
+  final Set<String> cuisines = <String>{};
+  final Set<String> equipment = <String>{};
   final Map<String, num> numericFilters = <String, num>{};
   int? maxReadyTime;
   String? sort;
@@ -455,7 +467,9 @@ class _SmartSearchState {
   String? fallbackQuery;
 
   void setMaxReadyTime(int minutes) {
-    if (minutes <= 0) return;
+    if (minutes <= 0) {
+      return;
+    }
     maxReadyTime = maxReadyTime == null
         ? minutes
         : math.min(maxReadyTime!, minutes);
@@ -503,12 +517,14 @@ class _SmartSearchState {
 }
 
 List<String> _mergeLists(List<String> base, Iterable<String> additions) {
-  final ordered = LinkedHashSet<String>();
+  final ordered = <String>{};
   for (final item in base) {
     ordered.add(item);
   }
   for (final add in additions) {
-    if (add.trim().isEmpty) continue;
+    if (add.trim().isEmpty) {
+      continue;
+    }
     ordered.add(add.trim());
   }
   return ordered.toList(growable: false);
@@ -536,15 +552,25 @@ String _normalizeSpaces(String value) {
 }
 
 String? _defaultFallbackQuery(_SmartSearchState state) {
-  if (state.mealTypes.contains('dessert')) return 'dessert recipes';
-  if (state.mealTypes.contains('breakfast')) return 'breakfast recipes';
-  if (state.mealTypes.contains('lunch')) return 'lunch recipes';
+  if (state.mealTypes.contains('dessert')) {
+    return 'dessert recipes';
+  }
+  if (state.mealTypes.contains('breakfast')) {
+    return 'breakfast recipes';
+  }
+  if (state.mealTypes.contains('lunch')) {
+    return 'lunch recipes';
+  }
   if (state.mealTypes.contains('dinner') ||
       state.mealTypes.contains('main course')) {
     return 'dinner recipes';
   }
-  if (state.mealTypes.contains('snack')) return 'snack ideas';
-  if (state.mealTypes.contains('drink')) return 'drink recipes';
+  if (state.mealTypes.contains('snack')) {
+    return 'snack ideas';
+  }
+  if (state.mealTypes.contains('drink')) {
+    return 'drink recipes';
+  }
   if (state.cuisines.isNotEmpty) {
     return '${state.cuisines.first} recipes';
   }
@@ -590,9 +616,13 @@ bool _isAllCaps(String value) {
 }
 
 bool _isTitleCase(String value) {
-  if (value.isEmpty) return false;
+  if (value.isEmpty) {
+    return false;
+  }
   final head = value[0];
-  if (head != head.toUpperCase()) return false;
+  if (head != head.toUpperCase()) {
+    return false;
+  }
   final tail = value.substring(1);
   return tail == tail.toLowerCase();
 }

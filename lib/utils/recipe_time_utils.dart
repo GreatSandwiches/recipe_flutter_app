@@ -5,9 +5,15 @@ int? deriveReadyInMinutes(Map<String, dynamic> details) {
   final additional = details['additionalMinutes'];
 
   int sumParts = 0;
-  if (prep is int && prep > 0) sumParts += prep;
-  if (cook is int && cook > 0) sumParts += cook;
-  if (additional is int && additional > 0) sumParts += additional;
+  if (prep is int && prep > 0) {
+    sumParts += prep;
+  }
+  if (cook is int && cook > 0) {
+    sumParts += cook;
+  }
+  if (additional is int && additional > 0) {
+    sumParts += additional;
+  }
 
   int stepsTotal = 0;
   final analyzed = details['analyzedInstructions'];
@@ -36,7 +42,9 @@ int? deriveReadyInMinutes(Map<String, dynamic> details) {
   }
 
   int derived = 0;
-  if (sumParts > 0) derived = sumParts;
+  if (sumParts > 0) {
+    derived = sumParts;
+  }
   if (stepsTotal > 0) {
     if (derived == 0) {
       derived = stepsTotal;
@@ -49,8 +57,12 @@ int? deriveReadyInMinutes(Map<String, dynamic> details) {
     }
   }
 
-  if (derived == 0 && ready is int && ready > 0) derived = ready;
-  if (ready == 45 && derived != 45 && derived > 0) return derived;
+  if (derived == 0 && ready is int && ready > 0) {
+    derived = ready;
+  }
+  if (ready == 45 && derived != 45 && derived > 0) {
+    return derived;
+  }
 
   return derived > 0 ? derived : null;
 }

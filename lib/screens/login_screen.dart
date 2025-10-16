@@ -25,9 +25,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
     final auth = context.read<AuthProvider>();
-    setState(() { _loading = true; });
+    setState(() {
+      _loading = true;
+    });
     bool ok;
     final isSignUpFlow = _isSignUp;
     if (_isSignUp) {
@@ -35,14 +39,22 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       ok = await auth.signIn(_emailCtrl.text, _passwordCtrl.text);
     }
-    if (!mounted) return;
-    setState(() { _loading = false; });
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _loading = false;
+    });
     if (ok) {
       if (isSignUpFlow) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Account created. Set up profile.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Account created. Set up profile.')),
+        );
         Navigator.pushReplacementNamed(context, '/profile_setup');
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Logged in')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Logged in')));
         // Close login if possible; if this is the root, MainApp will swap UI anyway
         await Navigator.of(context).maybePop();
       }
@@ -68,19 +80,37 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(Icons.lock_outline, size: 72, color: theme.colorScheme.primary),
+                  Icon(
+                    Icons.lock_outline,
+                    size: 72,
+                    color: theme.colorScheme.primary,
+                  ),
                   const SizedBox(height: 16),
-                  Text(_isSignUp ? 'Create an account' : 'Welcome back', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    _isSignUp ? 'Create an account' : 'Welcome back',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  Text(_isSignUp ? 'Sign up with email & password. Verification may be required.' : 'Login with your credentials.', style: theme.textTheme.bodySmall),
+                  Text(
+                    _isSignUp
+                        ? 'Sign up with email & password. Verification may be required.'
+                        : 'Login with your credentials.',
+                    style: theme.textTheme.bodySmall,
+                  ),
                   const SizedBox(height: 28),
                   TextFormField(
                     controller: _emailCtrl,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(labelText: 'Email'),
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Enter email';
-                      if (!v.contains('@')) return 'Invalid email';
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Enter email';
+                      }
+                      if (!v.contains('@')) {
+                        return 'Invalid email';
+                      }
                       return null;
                     },
                   ),
@@ -91,26 +121,50 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: InputDecoration(
                       labelText: 'Password',
                       suffixIcon: IconButton(
-                        icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
+                        icon: Icon(
+                          _obscure ? Icons.visibility : Icons.visibility_off,
+                        ),
                         onPressed: () => setState(() => _obscure = !_obscure),
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) return 'Enter password';
-                      if (v.length < 4) return 'Too short';
+                      if (v == null || v.isEmpty) {
+                        return 'Enter password';
+                      }
+                      if (v.length < 4) {
+                        return 'Too short';
+                      }
                       return null;
                     },
                   ),
                   const SizedBox(height: 32),
                   FilledButton.icon(
                     onPressed: _loading ? null : _submit,
-                    icon: _loading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(_isSignUp ? Icons.person_add : Icons.login),
-                    label: Text(_loading ? (_isSignUp ? 'Creating...' : 'Signing in...') : (_isSignUp ? 'Sign Up' : 'Login')),
+                    icon: _loading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(_isSignUp ? Icons.person_add : Icons.login),
+                    label: Text(
+                      _loading
+                          ? (_isSignUp ? 'Creating...' : 'Signing in...')
+                          : (_isSignUp ? 'Sign Up' : 'Login'),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextButton(
-                    onPressed: _loading ? null : () => setState(() { _isSignUp = !_isSignUp; }),
-                    child: Text(_isSignUp ? 'Have an account? Login' : 'Need an account? Sign Up'),
+                    onPressed: _loading
+                        ? null
+                        : () => setState(() {
+                            _isSignUp = !_isSignUp;
+                          }),
+                    child: Text(
+                      _isSignUp
+                          ? 'Have an account? Login'
+                          : 'Need an account? Sign Up',
+                    ),
                   ),
                   SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
                 ],

@@ -38,7 +38,9 @@ class _SearchScreenState extends State<SearchScreen> {
     if (widget.initialKeyword != null && widget.initialKeyword!.isNotEmpty) {
       _keywordController.text = widget.initialKeyword!;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         final ingProvider = context.read<IngredientsProvider>();
         if (ingProvider.ingredients.isEmpty) {
           _searchRecipes();
@@ -72,12 +74,22 @@ class _SearchScreenState extends State<SearchScreen> {
       }
     }
   }
-  String? _resolveSmartQueryDisplay(String original, SmartSearchResult? result) {
-    if (result == null) return null;
+
+  String? _resolveSmartQueryDisplay(
+    String original,
+    SmartSearchResult? result,
+  ) {
+    if (result == null) {
+      return null;
+    }
     final cleaned = result.cleanedQuery.trim();
-    if (cleaned.isEmpty) return null;
+    if (cleaned.isEmpty) {
+      return null;
+    }
     final base = original.trim();
-    if (base.isEmpty) return cleaned;
+    if (base.isEmpty) {
+      return cleaned;
+    }
     return cleaned.toLowerCase() == base.toLowerCase() ? null : cleaned;
   }
 
@@ -88,8 +100,12 @@ class _SearchScreenState extends State<SearchScreen> {
     final highlights = <String>[];
 
     void addLabel(String? label) {
-      if (label == null) return;
-      if (label.trim().isEmpty) return;
+      if (label == null) {
+        return;
+      }
+      if (label.trim().isEmpty) {
+        return;
+      }
       highlights.add(label);
     }
 
@@ -155,7 +171,9 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Iterable<String> _diffList(List<String> base, List<String> applied) {
-    if (applied.isEmpty) return const <String>[];
+    if (applied.isEmpty) {
+      return const <String>[];
+    }
     final Set<String> baseSet = base
         .map((value) => value.toLowerCase().trim())
         .toSet();
@@ -287,7 +305,9 @@ class _SearchScreenState extends State<SearchScreen> {
         appliedOptions: effectiveOptions,
       );
       final queryDisplay = _resolveSmartQueryDisplay(keyword, smartResult);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _recipes = recipes;
         _isLoading = false;
@@ -296,22 +316,26 @@ class _SearchScreenState extends State<SearchScreen> {
         _smartQueryDisplay = queryDisplay;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _isLoading = false;
         _smartHighlights = const <String>[];
         _smartQueryDisplay = null;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to search recipes: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to search recipes: $e')));
     }
   }
 
   void _removeIngredient(String ing) async {
     final provider = context.read<IngredientsProvider>();
     await provider.remove(ing);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     if (provider.ingredients.isNotEmpty) {
       _searchRecipes();
     } else {
@@ -352,16 +376,24 @@ class _SearchScreenState extends State<SearchScreen> {
     final facts = <Widget>[];
     TextStyle style = const TextStyle(fontSize: 12, color: Colors.grey);
     void addFact(String label, dynamic value, {String? suffix}) {
-      if (value == null || (value is String && value.trim().isEmpty)) return;
+      if (value == null || (value is String && value.trim().isEmpty)) {
+        return;
+      }
       facts.add(Text('$label: $value${suffix ?? ''}', style: style));
     }
 
     addFact('Ready in', recipe['readyInMinutes'], suffix: ' min');
     addFact('Servings', recipe['servings']);
     addFact('Health score', recipe['healthScore']);
-    if (recipe['vegan'] == true) facts.add(Text('Vegan', style: style));
-    if (recipe['vegetarian'] == true) facts.add(Text('Vegetarian', style: style));
-    if (recipe['glutenFree'] == true) facts.add(Text('Gluten free', style: style));
+    if (recipe['vegan'] == true) {
+      facts.add(Text('Vegan', style: style));
+    }
+    if (recipe['vegetarian'] == true) {
+      facts.add(Text('Vegetarian', style: style));
+    }
+    if (recipe['glutenFree'] == true) {
+      facts.add(Text('Gluten free', style: style));
+    }
     return facts;
   }
 
@@ -383,7 +415,9 @@ class _SearchScreenState extends State<SearchScreen> {
           Flexible(
             child: SingleChildScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: EdgeInsets.only(bottom: 12 + MediaQuery.of(context).viewInsets.bottom),
+              padding: EdgeInsets.only(
+                bottom: 12 + MediaQuery.of(context).viewInsets.bottom,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -407,7 +441,9 @@ class _SearchScreenState extends State<SearchScreen> {
                         children: [
                           for (final ing in ingProvider.ingredients)
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
                               child: InputChip(
                                 label: Text(ing),
                                 onDeleted: () => _removeIngredient(ing),
@@ -468,7 +504,8 @@ class _SearchScreenState extends State<SearchScreen> {
                         child: Wrap(children: _buildActiveFilters()),
                       ),
                     ),
-                  if ((_smartQueryDisplay != null && _smartQueryDisplay!.isNotEmpty) ||
+                  if ((_smartQueryDisplay != null &&
+                          _smartQueryDisplay!.isNotEmpty) ||
                       _smartHighlights.isNotEmpty)
                     _buildSmartSummarySection(context),
                   if (_lastResponse != null)
@@ -479,19 +516,28 @@ class _SearchScreenState extends State<SearchScreen> {
                         children: [
                           Text(
                             'Found ${_lastResponse!.totalResults} recipes',
-                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey,
+                            ),
                           ),
                           if (_filters.number != _lastResponse!.number &&
                               _lastResponse!.results.length <
                                   _lastResponse!.totalResults)
                             Text(
                               'Showing ${_lastResponse!.results.length} of ${_lastResponse!.totalResults}',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
                             )
                           else
                             Text(
                               'Showing ${_lastResponse!.results.length}',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                              ),
                             ),
                         ],
                       ),

@@ -53,13 +53,17 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       } else {
         _nameCtrl.text = profile.name;
       }
-      _bioCtrl.text = profile.bio == 'Home cook & flavour explorer' ? '' : profile.bio;
+      _bioCtrl.text = profile.bio == 'Home cook & flavour explorer'
+          ? ''
+          : profile.bio;
       _selectedColor = profile.avatarColor;
-      setState((){});
+      setState(() {});
     } else {
       // Already complete -> try to close this screen if there's a back stack
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         if (Navigator.of(context).canPop()) {
           await Navigator.of(context).maybePop();
         }
@@ -69,31 +73,46 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   }
 
   String _humanize(String s) {
-    return s.replaceAll(RegExp(r'[._-]+'), ' ').split(' ').where((p)=>p.isNotEmpty).map((p)=> p[0].toUpperCase()+p.substring(1)).join(' ');
+    return s
+        .replaceAll(RegExp(r'[._-]+'), ' ')
+        .split(' ')
+        .where((p) => p.isNotEmpty)
+        .map((p) => p[0].toUpperCase() + p.substring(1))
+        .join(' ');
   }
 
   Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
     final profile = context.read<ProfileProvider>();
-    setState(() { _saving = true; });
+    setState(() {
+      _saving = true;
+    });
     await profile.completeSetup(
       name: _nameCtrl.text.trim(),
       bio: _bioCtrl.text.trim(),
       avatarColor: _selectedColor,
     );
-    if (!mounted) return;
-    setState(() { _saving = false; });
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _saving = false;
+    });
     final err = context.read<ProfileProvider>().lastRemoteError;
     if (err != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Profile saved locally. Sync pending: $err')),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Profile set up')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Profile set up')));
     }
-  // Avoid popping the root (which would show a black screen). If we can't pop,
-  // rely on MainApp rebuilding to the main UI because profile.isCompleted == true.
-  await Navigator.of(context).maybePop();
+    // Avoid popping the root (which would show a black screen). If we can't pop,
+    // rely on MainApp rebuilding to the main UI because profile.isCompleted == true.
+    await Navigator.of(context).maybePop();
   }
 
   @override
@@ -120,17 +139,30 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   ],
                   const Icon(Icons.person_outline, size: 72),
                   const SizedBox(height: 12),
-                  Text('Finish setting up your profile', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    'Finish setting up your profile',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  Text('Add a friendly display name, a short bio and pick a colour.'),
+                  Text(
+                    'Add a friendly display name, a short bio and pick a colour.',
+                  ),
                   const SizedBox(height: 32),
                   TextFormField(
                     controller: _nameCtrl,
                     textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(labelText: 'Display name'),
+                    decoration: const InputDecoration(
+                      labelText: 'Display name',
+                    ),
                     validator: (v) {
-                      if (v==null || v.trim().isEmpty) return 'Enter a name';
-                      if (v.trim().length < 2) return 'Too short';
+                      if (v == null || v.trim().isEmpty) {
+                        return 'Enter a name';
+                      }
+                      if (v.trim().length < 2) {
+                        return 'Too short';
+                      }
                       return null;
                     },
                   ),
@@ -138,10 +170,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   TextFormField(
                     controller: _bioCtrl,
                     maxLines: 2,
-                    decoration: const InputDecoration(labelText: 'Bio (optional)'),
+                    decoration: const InputDecoration(
+                      labelText: 'Bio (optional)',
+                    ),
                   ),
                   const SizedBox(height: 24),
-                  Text('Avatar colour', style: Theme.of(context).textTheme.labelLarge),
+                  Text(
+                    'Avatar colour',
+                    style: Theme.of(context).textTheme.labelLarge,
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 10,
@@ -158,7 +195,9 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                               color: c,
                               shape: BoxShape.circle,
                               border: Border.all(
-                                color: _selectedColor == c ? Colors.black87 : Colors.white,
+                                color: _selectedColor == c
+                                    ? Colors.black87
+                                    : Colors.white,
                                 width: _selectedColor == c ? 2 : 1,
                               ),
                               boxShadow: [
@@ -166,11 +205,13 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                                   const BoxShadow(
                                     color: Colors.black26,
                                     blurRadius: 4,
-                                    offset: Offset(0,2),
+                                    offset: Offset(0, 2),
                                   ),
                               ],
                             ),
-                            child: _selectedColor == c ? const Icon(Icons.check, color: Colors.black87) : null,
+                            child: _selectedColor == c
+                                ? const Icon(Icons.check, color: Colors.black87)
+                                : null,
                           ),
                         ),
                     ],
@@ -178,12 +219,22 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   const SizedBox(height: 40),
                   FilledButton.icon(
                     onPressed: _saving ? null : _save,
-                    icon: _saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.check),
+                    icon: _saving
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.check),
                     label: Text(_saving ? 'Saving...' : 'Save & Continue'),
                   ),
                   const SizedBox(height: 12),
                   TextButton(
-                    onPressed: _saving ? null : () { Navigator.of(context).maybePop(); },
+                    onPressed: _saving
+                        ? null
+                        : () {
+                            Navigator.of(context).maybePop();
+                          },
                     child: const Text('Skip for now'),
                   ),
                   // Add safe space at bottom so buttons aren't hidden under the keyboard
