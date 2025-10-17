@@ -20,8 +20,8 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  final TextEditingController _searchController = TextEditingController();
   final TextEditingController _keywordController = TextEditingController();
+  String _lastIngredientSignature = '';
   bool _isLoading = false;
   List<Map<String, dynamic>> _recipes = [];
   RecipeSearchResponse? _lastResponse;
@@ -35,6 +35,7 @@ class _SearchScreenState extends State<SearchScreen> {
     _filters = normaliseRecipeSearchOptions(
       widget.initialFilters ?? kDefaultRecipeFilters,
     );
+    _keywordController.addListener(_onKeywordChanged);
     if (widget.initialKeyword != null && widget.initialKeyword!.isNotEmpty) {
       _keywordController.text = widget.initialKeyword!;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -66,9 +67,9 @@ class _SearchScreenState extends State<SearchScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final ingProvider = context.watch<IngredientsProvider>();
-    final text = ingProvider.ingredients.join(', ');
-    if (_searchController.text != text) {
-      _searchController.text = text;
+    final signature = ingProvider.ingredients.join(', ');
+    if (_lastIngredientSignature != signature) {
+      _lastIngredientSignature = signature;
       if (ingProvider.ingredients.isNotEmpty) {
         _searchRecipes();
       }
@@ -399,9 +400,118 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose();
+    _keywordController.removeListener(_onKeywordChanged);
     _keywordController.dispose();
     super.dispose();
+  }
+
+  void _onKeywordChanged() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {});
+  }
+
+  Widget _buildKeywordField(BuildContext context) {
+    return TextField(
+      controller: _keywordController,
+      textInputAction: TextInputAction.search,
+      onSubmitted: (_) => _searchRecipes(),
+      decoration: InputDecoration(
+        hintText: 'Search by dish, ingredient, or mood',
+        prefixIcon: const Icon(Icons.search),
+        border: const OutlineInputBorder(),
+        suffixIcon: _keywordController.text.isEmpty
+            ? null
+            : IconButton(
+                tooltip: 'Clear keyword',
+                icon: const Icon(Icons.clear),
+                onPressed: _isLoading
+                    ? null
+                    : () {
+                        _keywordController.clear();
+                      },
+              ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: [
+        FilledButton.icon(
+          onPressed: _isLoading ? null : _searchRecipes,
+          icon: const Icon(Icons.search),
+          label: const Text('Search recipes'),
+        ),
+        OutlinedButton.icon(
+          onPressed: _isLoading ? null : _openFilters,
+          icon: const Icon(Icons.tune),
+          label: const Text('Filters'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIngredientSection(
+    BuildContext context,
+    IngredientsProvider ingProvider,
+  ) {
+    final theme = Theme.of(context);
+    if (ingProvider.ingredients.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              'Add pantry items from the home tab or just try a keyword search above.',
+              textAlign: TextAlign.left,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Pantry ingredients',
+            style: theme.textTheme.titleSmall,
+          ),
+          const SizedBox(height: 8),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceVariant.withOpacity(0.45),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final ing in ingProvider.ingredients)
+                    InputChip(
+                      label: Text(ing),
+                      onDeleted: () => _removeIngredient(ing),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -422,88 +532,34 @@ class _SearchScreenState extends State<SearchScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (ingProvider.ingredients.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(24.0),
-                      child: Text(
-                        'No ingredients yet. Add some or try a keyword search.'
-                        ' Use the box below.',
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  else
-                    SizedBox(
-                      height: 74,
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 12,
-                        ),
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          for (final ing in ingProvider.ingredients)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 4,
-                              ),
-                              child: InputChip(
-                                label: Text(ing),
-                                onDeleted: () => _removeIngredient(ing),
-                                deleteIcon: const Icon(Icons.close, size: 18),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: TextField(
-                      controller: _keywordController,
-                      textInputAction: TextInputAction.search,
-                      onSubmitted: (_) => _searchRecipes(),
-                      decoration: const InputDecoration(
-                        labelText: 'Add a keyword (e.g. pasta, tacos, curry)',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: Row(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            readOnly: true,
-                            maxLines: 2,
-                            decoration: const InputDecoration(
-                              labelText: 'Ingredients used',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
+                        Text(
+                          'Find the perfect recipe',
+                          style: Theme.of(context).textTheme.titleMedium,
                         ),
-                        const SizedBox(width: 12),
-                        OutlinedButton.icon(
-                          onPressed: _isLoading ? null : _openFilters,
-                          icon: const Icon(Icons.filter_alt_outlined),
-                          label: const Text('Filters'),
-                        ),
-                        const SizedBox(width: 12),
-                        FilledButton.icon(
-                          onPressed: _isLoading ? null : _searchRecipes,
-                          icon: const Icon(Icons.search),
-                          label: const Text('Search'),
-                        ),
+                        const SizedBox(height: 12),
+                        _buildKeywordField(context),
+                        const SizedBox(height: 12),
+                        _buildActionButtons(),
                       ],
                     ),
                   ),
+                  _buildIngredientSection(context, ingProvider),
                   if (_filters.hasNonIngredientFilters ||
                       _filters.excludeIngredients.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                       child: Align(
                         alignment: Alignment.centerLeft,
-                        child: Wrap(children: _buildActiveFilters()),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: _buildActiveFilters(),
+                        ),
                       ),
                     ),
                   if ((_smartQueryDisplay != null &&
