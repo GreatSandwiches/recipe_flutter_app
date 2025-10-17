@@ -414,7 +414,8 @@ class _SearchScreenState extends State<SearchScreen> {
           // Scrollable header area so keyboard never causes overflow
           Flexible(
             child: SingleChildScrollView(
-              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              keyboardDismissBehavior:
+                  ScrollViewKeyboardDismissBehavior.onDrag,
               padding: EdgeInsets.only(
                 bottom: 12 + MediaQuery.of(context).viewInsets.bottom,
               ),

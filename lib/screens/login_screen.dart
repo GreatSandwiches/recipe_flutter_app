@@ -23,7 +23,7 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordCtrl.dispose();
     super.dispose();
   }
-
+  // Handles form submission for login or sign-up
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -55,12 +55,14 @@ class _LoginScreenState extends State<LoginScreen> {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Logged in')));
-        // Close login if possible; if this is the root, MainApp will swap UI anyway
+        // Close login if possible; if this is the root, MainApp updates anyway.
         await Navigator.of(context).maybePop();
       }
     } else {
       final err = context.read<AuthProvider>().lastError ?? 'Unknown error';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(err)),
+      );
     }
   }
 
@@ -71,7 +73,8 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(title: const Text('Login')),
       body: Center(
         child: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          keyboardDismissBehavior:
+              ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
@@ -95,7 +98,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 8),
                   Text(
                     _isSignUp
-                        ? 'Sign up with email & password. Verification may be required.'
+                        ? 'Sign up with email & password.'
+                            ' Verification may be required.'
                         : 'Login with your credentials.',
                     style: theme.textTheme.bodySmall,
                   ),

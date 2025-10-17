@@ -103,15 +103,18 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     final err = context.read<ProfileProvider>().lastRemoteError;
     if (err != null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Profile saved locally. Sync pending: $err')),
+        SnackBar(
+          content: Text('Profile saved locally. Sync pending: $err'),
+        ),
       );
     } else {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Profile set up')));
     }
-    // Avoid popping the root (which would show a black screen). If we can't pop,
-    // rely on MainApp rebuilding to the main UI because profile.isCompleted == true.
+    // Avoid popping the root (which would show a black screen).
+    // If we can't pop, rely on MainApp rebuilding to the main UI because
+    // profile.isCompleted == true.
     await Navigator.of(context).maybePop();
   }
 
@@ -124,7 +127,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       ),
       body: Center(
         child: SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          keyboardDismissBehavior:
+              ScrollViewKeyboardDismissBehavior.onDrag,
           padding: const EdgeInsets.all(24),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 520),
@@ -147,7 +151,8 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Add a friendly display name, a short bio and pick a colour.',
+                    'Add a friendly display name, a short bio'
+                    ' and pick a colour.',
                   ),
                   const SizedBox(height: 32),
                   TextFormField(
@@ -237,7 +242,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                           },
                     child: const Text('Skip for now'),
                   ),
-                  // Add safe space at bottom so buttons aren't hidden under the keyboard
+                  // Add safe space so buttons aren't hidden under the keyboard.
                   SizedBox(height: MediaQuery.of(context).viewInsets.bottom),
                 ],
               ),
