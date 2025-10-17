@@ -451,7 +451,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                               ),
                               SizedBox(height: 16),
                               Text(
-                                'No recipes matched these filters yet. Try adjusting the category or refresh for new ideas.',
+                                'No recipes matched these filters yet.'
+                                ' Adjust a category or refresh for new ideas.',
                                 textAlign: TextAlign.center,
                               ),
                             ],

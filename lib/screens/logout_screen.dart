@@ -27,7 +27,8 @@ class LogoutScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'This is a placeholder logout screen. No remote session handling yet.',
+                  'This is a placeholder logout screen.'
+                  ' No remote session handling yet.',
                 ),
                 const SizedBox(height: 28),
                 FilledButton.icon(

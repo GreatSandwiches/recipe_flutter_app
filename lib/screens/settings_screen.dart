@@ -126,7 +126,8 @@ class SettingsScreen extends StatelessWidget {
                 builder: (c) => AlertDialog(
                   title: const Text('Reset Settings'),
                   content: const Text(
-                    'This will restore defaults for theme, notifications and units.',
+                    'This will restore defaults for theme, notifications'
+                    ' and units.',
                   ),
                   actions: [
                     TextButton(

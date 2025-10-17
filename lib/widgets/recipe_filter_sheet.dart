@@ -441,7 +441,8 @@ class _RecipeFiltersSheetState extends State<_RecipeFiltersSheet> {
                       SwitchListTile(
                         title: const Text('Ignore pantry staples'),
                         subtitle: const Text(
-                          'Remove items like salt, water, flour from ingredient matching',
+                          'Remove items like salt, water, flour'
+                          ' from ingredient matching',
                         ),
                         value: _ignorePantry,
                         onChanged: (value) {

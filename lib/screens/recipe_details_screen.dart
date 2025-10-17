@@ -1093,7 +1093,8 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                               ..._buildQATabContent(sheetSetState, recipe),
                             const SizedBox(height: 24),
                             Text(
-                              'AI suggestions may be imperfect. Always follow food safety best practices.',
+                              'AI suggestions may be imperfect.'
+                              ' Always follow food safety best practices.',
                               style: TextStyle(
                                 fontSize: 11,
                                 color: Colors.grey[600],

@@ -426,7 +426,8 @@ class _SearchScreenState extends State<SearchScreen> {
                     const Padding(
                       padding: EdgeInsets.all(24.0),
                       child: Text(
-                        'No ingredients yet. Add some or try a keyword search below.',
+                        'No ingredients yet. Add some or try a keyword search.'
+                        ' Use the box below.',
                         textAlign: TextAlign.center,
                       ),
                     )
@@ -526,7 +527,8 @@ class _SearchScreenState extends State<SearchScreen> {
                               _lastResponse!.results.length <
                                   _lastResponse!.totalResults)
                             Text(
-                              'Showing ${_lastResponse!.results.length} of ${_lastResponse!.totalResults}',
+                              'Showing ${_lastResponse!.results.length} of '
+                              '${_lastResponse!.totalResults}',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey,
