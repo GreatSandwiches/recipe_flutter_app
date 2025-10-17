@@ -790,8 +790,9 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
                     value: _formatCost(costPerServing),
                   ),
                   _CostBigNumber(
-                    label:
-                        'Total${servings != null ? ' ($servings servings)' : ''}',
+                    label: servings != null
+                        ? 'Total ($servings servings)'
+                        : 'Total',
                     value: _formatCost(totalCost),
                   ),
                 ],
