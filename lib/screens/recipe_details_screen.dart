@@ -875,6 +875,11 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       if (entry is! Map<String, dynamic>) {
         continue;
       }
+      final rawAmount = entry['amount'];
+      final amountValue = _extractAmountValue(rawAmount);
+      if (amountValue != null && amountValue <= 0.0001) {
+        continue;
+      }
       final percent = _asDouble(entry['percentOfDailyNeeds']);
       if (percent == null || percent <= 0) {
         continue;
@@ -883,7 +888,7 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       if (title == null || title.isEmpty) {
         continue;
       }
-      final amount = entry['amount']?.toString() ?? '';
+      final amount = rawAmount == null ? '' : rawAmount.toString();
       items.add(_DailyNeedItem(title: title, amount: amount, percent: percent));
     }
     items.sort((a, b) => b.percent.compareTo(a.percent));
@@ -934,6 +939,26 @@ class _RecipeDetailsScreenState extends State<RecipeDetailsScreen> {
       }
     }
     return null;
+  }
+
+  double? _extractAmountValue(dynamic raw) {
+    if (raw is Map<String, dynamic>) {
+      final value = raw['value'];
+      if (value is num) {
+        return value.toDouble();
+      }
+      if (value is String) {
+        final parsed = double.tryParse(value);
+        if (parsed != null) {
+          return parsed;
+        }
+      }
+    }
+    final parts = _amountParts(raw);
+    if (parts != null) {
+      return parts.value;
+    }
+    return _asDouble(raw);
   }
 
   double? _asDouble(dynamic value) {
