@@ -329,8 +329,9 @@ class ProfileScreen extends StatelessWidget {
                         scrollDirection: Axis.horizontal,
                         itemBuilder: (ctx, i) {
                           final dish = recentDishes[i];
-                          final lastMade =
-                              '${dish.madeAt.day}/${dish.madeAt.month}/${dish.madeAt.year}';
+                          final lastMade = '${dish.madeAt.day}/'
+                              '${dish.madeAt.month}/'
+                              '${dish.madeAt.year}';
                           return GestureDetector(
                             onTap: () => Navigator.push(
                               context,
